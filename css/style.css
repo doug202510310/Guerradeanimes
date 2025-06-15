@@ -1,0 +1,436 @@
+body {
+    font-family: 'Inter', sans-serif;
+    background-color: #1a202c; /* tailwind gray-900 */
+}
+#mainMenu {
+    background-image: url('../img/background.png');
+    background-size: cover;
+    background-position: center;
+    min-height: 100vh; /* Garante que cobre toda a altura da página */
+    width: 200vh;
+    padding: 2rem;
+}
+.card {
+    width: 150px;
+    height: 220px;
+    background-color: #2d3748; /* tailwind gray-800 */
+    border-radius: 12px;
+    padding: 0.5rem; /* Reduced padding for more content space */
+    display: flex;
+    flex-direction: column;
+    justify-content: space-between;
+    align-items: center;
+    text-align: center;
+    font-size: 0.8rem; /* Adjusted font size */
+    line-height: 1.2;
+    box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06); /* shadow-lg */
+    transition: all 0.2s ease-in-out, transform 0.2s ease-in-out; /* Added transform to transition */
+    cursor: pointer;
+    position: relative;
+    overflow: hidden;
+    border: 2px solid #4a5568; /* gray-700 */
+}
+.card:hover {
+    transform: translateY(-5px);
+    box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -2px rgba(0, 0, 0, 0.05);
+}
+/* Selection scaling */
+.card.selected {
+    transform: scale(1.08); /* Increased size for selection */
+    z-index: 10; /* Bring to front when selected */
+    border-color: #f6e05e; /* yellow-400 */
+    box-shadow: 0 0 0 4px #f6e05e;
+}
+.card.target-selected {
+    transform: scale(1.08); /* Increased size for target */
+    z-index: 10; /* Bring to front when selected */
+    border-color: #f8fc81; /* red-300 */
+    box-shadow: 0 0 0 4px #fc8181;
+}
+.card.active-player-selected { /* This class is for player's field, not individual cards */
+    border-color: #63b3ed; /* blue-300 */
+    box-shadow: 0 0 0 4px #63b3ed;
+}
+.card-image {
+    width: 90%;
+    height: 90px; /* Fixed height for image */
+    background-color: #4a5568; /* placeholder color */
+    border-radius: 8px;
+    margin-bottom: 0.5rem;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: #a0aec0;
+    font-size: 0.75rem;
+    overflow: hidden;
+}
+.card-name {
+    font-weight: 700; /* font-bold */
+    font-size: 1rem; /* text-base */
+    margin-bottom: 0.2rem;
+    white-space: nowrap; /* Prevent name from wrapping */
+    overflow: hidden;
+    text-overflow: ellipsis; /* Add ellipsis if too long */
+    width: 100%;
+}
+.card-attribute {
+    color: #a0aec0; /* gray-400 */
+    font-size: 0.7rem;
+    line-height: 1;
+}
+.card-class {
+    font-style: italic;
+    margin-bottom: 0.3rem;
+}
+.card-effect-text {
+    font-size: 0.65rem;
+    height: 30px; /* Fixed height for effect text preview */
+    overflow: hidden;
+    text-overflow: ellipsis;
+    display: -webkit-box;
+    -webkit-line-clamp: 2; /* Limit to 2 lines */
+    line-clamp: 2; /* Standard property for compatibility */
+    -webkit-box-orient: vertical;
+    color: #cbd5e0; /* gray-300 */
+    margin-top: 0.2rem;
+}
+.card-stats {
+    display: flex;
+    justify-content: space-between;
+    width: 100%;
+    margin-top: 0.4rem;
+    font-size: 0.75rem;
+    font-weight: bold;
+}
+.card-hp-text {
+    color: #48bb78; /* Default green */
+}
+.card-hp-text.damaged {
+    color: #ef4444; /* red-500 when damaged */
+}
+.card-hp-bar {
+    width: 100%;
+    height: 6px;
+    background-color: #4a5568; /* gray-700 */
+    border-radius: 3px;
+    margin-top: 0.3rem;
+    position: relative;
+}
+.card-hp-fill {
+    height: 100%;
+    background-color: #48bb78; /* green-500 */
+    border-radius: 3px;
+    transition: width 0.3s ease-in-out;
+}
+.element-color-fogo { border-color: #ef4444; } /* red-500 */
+.element-color-agua { border-color: #3b82f6; } /* blue-500 */
+.element-color-terra { border-color: #a16207; } /* amber-700 / brown-600 */
+.element-color-ar { border-color: #e2e8f0; } /* gray-200 */
+.element-color-dark { border-color: #000000; } /* neutral-900 / black */
+.element-color-luz { border-color: #fbbf24; } /* amber-400 / yellow-500 */
+
+/* Battlefield layout */
+/* Make the battlePhase content container a flex row */
+#battlePhaseContent {
+    display: flex;
+    flex-direction: row; /* Arrange fields side-by-side */
+    justify-content: space-around;
+    align-items: flex-start; /* Align to the top */
+    width: 100%;
+    gap: 1rem; /* Space between player fields */
+}
+
+#player1Battlefield, #player2Battlefield {
+    width: 55%; /* Adjusted width to fit side-by-side with VS and gap */
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    text-align: center;
+    /* Added min-height for better layout consistency */
+    min-height: 380px; /* Enough space for 2 rows of cards + headers */
+}
+
+.battle-card-slot {
+    background-color: #2d3748; /* gray-800 */
+    width: 150px; /* Fixed width for consistent sizing */
+    height: 200px; /* Fixed height for consistent sizing */
+    border: 2px solid #4a5568;
+    border-radius: 8px;
+    position: relative;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    overflow: hidden;
+    flex-shrink: 0; /* Prevent shrinking */
+}
+.battle-card-slot :active {
+    border: 2px solid #f6e05e;
+    background-color: #ef4444; /* Highlight color on active */
+}
+.battle-card-slot .card {
+    width: 100%; /* Fill the slot */
+    height: 100%;
+    border: none; /* Remove border from card inside slot */
+    box-shadow: none;
+    padding: 0.2rem; /* Adjust padding for battle cards */
+    font-size: 0.65rem; /* Smaller font for battle */
+    transition: all 0.2s ease-in-out, transform 0.2s ease-in-out;
+}
+
+
+.battle-card-slot .card-name {
+    font-size: 0.8rem;
+}
+.battle-card-slot .card-attribute {
+    font-size: 0.55rem;
+}
+.battle-card-slot .card-hp-bar {
+    height: 5px; /* Smaller HP bar in battle */
+}
+.battle-card-slot .card-image {
+    height: 60px; /* Smaller image in battle */
+}
+/* Flex containers for rows */
+.battlefield-row {
+    display: flex;
+    justify-content: center;
+    gap: 0.5rem; /* Spacing between cards in a row */
+    width: 100%;
+}
+
+/* VS text positioning */
+#vsText {
+    align-self: center; /* Center vertically within the flex container */
+    flex-shrink: 0; /* Prevent it from shrinking */
+    font-size: 4rem;
+    color: #4a5568; /* gray-700 */
+    pointer-events: none; /* Allow clicks to pass through */
+}
+
+/* Shine effect */
+.shine {
+    animation: shine-animation 0.8s ease-in-out forwards;
+    position: relative;
+    overflow: hidden;
+}
+
+.shine::after {
+    content: '';
+    position: absolute;
+    top: -50%;
+    left: -50%;
+    width: 200%;
+    height: 200%;
+    background: rgba(255, 255, 255, 0.4);
+    transform: rotate(45deg);
+    animation: shine-streak 0.8s ease-in-out forwards;
+}
+
+@keyframes shine-animation {
+    0% { box-shadow: 0 0 0px 0px rgba(255, 255, 0, 0.7); }
+    50% { box-shadow: 0 0 15px 5px rgba(255, 255, 0, 0.7); }
+    100% { box-shadow: 0 0 0px 0px rgba(255, 255, 0, 0); }
+}
+
+@keyframes shine-streak {
+    0% { transform: rotate(45deg) translate(-100%, -100%); opacity: 0.4; }
+    50% { transform: rotate(45deg) translate(0%, 0%); opacity: 0.8; }
+    100% { transform: rotate(45deg) translate(100%, 100%); opacity: 0; }
+}
+
+/* Modal Styles */
+.modal-overlay {
+    position: fixed;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background-color: rgba(0, 0, 0, 0.7);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    z-index: 1000;
+}
+.modal-content {
+    background-color: #2d3748; /* gray-800 */
+    padding: 2rem;
+    border-radius: 12px;
+    box-shadow: 0 10px 20px rgba(0, 0, 0, 0.5);
+    width: 90%;
+    max-width: 500px;
+    color: white;
+    position: relative;
+}
+.modal-close-button {
+    position: absolute;
+    top: 1rem;
+    right: 1rem;
+    background: none;
+    border: none;
+    font-size: 1.5rem;
+    cursor: pointer;
+    color: #a0aec0;
+}
+
+/* Active Player Highlight */
+.active-player-highlight {
+    border: 3px solid #f6e05e; /* yellow-400 */
+    box-shadow: 0 0 15px 5px rgba(246, 224, 94, 0.4);
+    transition: all 0.3s ease-in-out;
+    padding: 1rem; /* Add padding to make highlight visible */
+}
+
+/* Card Combat Animations */
+@keyframes attack-move {
+    0% { transform: translateY(0) scale(1); }
+    50% { transform: translateY(-30px) scale(1.1); } /* Move up slightly, scale up */
+    100% { transform: translateY(0) scale(1); }
+}
+@keyframes target-hit {
+    0%, 100% { filter: brightness(100%); }
+    25% { filter: brightness(200%) invert(10%) sepia(100%) saturate(700%) hue-rotate(330deg); } /* Red flash */
+    50% { filter: brightness(100%); }
+    75% { filter: brightness(200%) invert(10%) sepia(100%) saturate(700%) hue-rotate(330deg); } /* Red flash */
+}
+@keyframes target-heal {
+    0%, 100% { filter: brightness(100%); }
+    25% { filter: brightness(200%) invert(10%) sepia(100%) saturate(700%) hue-rotate(100deg); } /* Green flash */
+    50% { filter: brightness(100%); }
+    75% { filter: brightness(200%) invert(10%) sepia(100%) saturate(700%) hue-rotate(100deg); } /* Green flash */
+}
+
+/* Responsive adjustments */
+@media (max-width: 768px) {
+    #battlePhaseContent {
+        flex-direction: column; /* Stack fields vertically on small screens */
+        align-items: center;
+        gap: 0; /* Remove gap when stacked */
+    }
+    #player1Battlefield, #player2Battlefield {
+        width: 100%; /* Take full width */
+        margin-bottom: 1rem; /* Space between stacked fields */
+        min-height: auto; /* Allow height to adjust */
+    }
+    #vsText {
+        position: static; /* Remove absolute positioning */
+        transform: none;
+        margin-bottom: 1rem;
+    }
+    .battlefield-row {
+        flex-wrap: wrap; /* Allow cards to wrap */
+        justify-content: center;
+        gap: 0.5rem;
+    }
+    .battle-card-slot {
+        width: 100px; /* Smaller fixed width */
+        height: 140px; /* Smaller fixed height */
+    }
+    .battle-card-slot .card {
+        font-size: 0.6rem;
+        padding: 0.1rem;
+    }
+    .card-name {
+        font-size: 0.7rem;
+    }
+    .card-attribute {
+        font-size: 0.5rem;
+    }
+    .card-image {
+        height: 50px;
+    }
+    .card-effect-text {
+        height: 25px;
+        font-size: 0.6rem;
+    }
+    .card-stats {
+        font-size: 0.65rem;
+    }
+}
+/* css/style.css */
+
+.card.has-shield {
+    border-color: #6ee7b7 !important; /* Uma borda verde clara ou amarela */
+    box-shadow: 0 0 15px 5px rgba(110, 231, 183, 0.6) !important; /* Brilho verde */
+    transition: all 0.3s ease-in-out; /* Adiciona uma transição suave */
+}
+
+/* Opcional: Garante que o hover funcione com o escudo */
+.card.has-shield:hover {
+    transform: translateY(-5px) scale(1.02); /* Ajuste leve para hover com escudo */
+    box-shadow: 0 0 20px 8px rgba(110, 231, 183, 0.8) !important;
+}
+
+/* Opcional: Se a carta com escudo estiver SELECIONADA, a seleção tem prioridade */
+.card.selected.has-shield {
+    border-color: #f6e05e !important; /* yellow-400 */
+    box-shadow: 0 0 0 4px #f6e05e !important;
+}
+.shield-value-overlay {
+    position: absolute;
+    top: 5px; /* Ajuste a posição vertical a partir do topo da carta */
+    left: 5px; /* Ajuste a posição horizontal a partir da esquerda da carta */
+    background-color: rgba(0, 0, 0, 0.7); /* Fundo semi-transparente preto */
+    color: white; /* Cor do texto (emoji e número) */
+    font-size: 0.8rem; /* Tamanho da fonte */
+    font-weight: bold; /* Deixa o texto em negrito */
+    padding: 3px 6px; /* Espaçamento interno */
+    border-radius: 5px; /* Bordas arredondadas */
+    z-index: 20; /* Garante que fique acima de outros elementos da carta */
+    pointer-events: none; /* Não interfere com cliques na carta por baixo */
+    display: flex; /* Para alinhar o emoji e o número na mesma linha */
+    align-items: center; /* Alinha verticalmente */
+    gap: 2px; /* Espaço entre o emoji e o número */
+}
+
+/* Opcional: Ajuste para telas menores */
+@media (max-width: 768px) {
+    .battle-card-slot .shield-value-overlay {
+        font-size: 0.7rem; /* Tamanho da fonte menor em batalha */
+        padding: 2px 4px;
+    }
+}
+
+.negative-effects-container {
+    position: absolute;
+    top: 5px;   /* Ajusta a posiç\u00e3o vertical */
+    right: 5px; /* Ajusta a posiç\u00e3o horizontal (lado direito) */
+    z-index: 20; /* Garante que fique acima de outros elementos da carta */
+    display: flex;
+    flex-direction: column; /* Empilha os ícones verticalmente */
+    gap: 2px; /* Espaço entre os ícones */
+    pointer-events: none; /* N\u00e3o interfere com cliques na carta */
+}
+
+.debuff-icon {
+    background-color: rgba(0, 0, 0, 0.7); /* Fundo semi-transparente */
+    color: white; /* Cor do texto/s\u00edmbolo */
+    font-size: 0.75rem; /* Tamanho da fonte */
+    font-weight: bold;
+    padding: 2px 5px;
+    border-radius: 4px;
+    white-space: nowrap; /* Evita que o texto quebre a linha */
+    text-shadow: 0 0 3px rgba(255, 0, 0, 0.5); /* Sombra vermelha suave para negativo */
+    border: 1px solid rgba(255, 0, 0, 0.5); /* Borda vermelha suave */
+}
+
+/* Estilos específicos para cada debuff (opcional, para cores ou s\u00edmbolos diferentes) */
+.partitura-icon {
+    /* J\u00e1 usa as cores padr\u00e3o de debuff, mas pode customizar */
+    color: #00BFFF; /* Exemplo: cor azul clara para Partitura */
+}
+.burn-icon {
+    color: #FF4500; /* Laranja avermelhado */
+    border-color: #FF4500;
+}
+.cursed-icon {
+    color: #A020F0; /* Roxo */
+    border-color: #A020F0;
+}
+
+/* Ajustes responsivos se necess\u00e1rio */
+@media (max-width: 768px) {
+    .debuff-icon {
+        font-size: 0.65rem;
+        padding: 1px 3px;
+    }
+}

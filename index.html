@@ -1,0 +1,226 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Guerra de Monstros</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="css/style.css"> </head>
+
+<body class="bg-gray-900 text-white flex items-center justify-center min-h-screen p-4">
+    <div id="app" class="flex flex-col items-center justify-center">
+
+        <div id="mainMenu" class="flex flex-col items-center justify-center space-y-8">
+            <h1 class="text-6xl font-bold text-yellow-400 mb-8 animate-pulse">Guerra de Monstros</h1>
+            <div class="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-4">
+                <div class="card element-color-fogo has-shield">
+                    <div class="card-image">
+                        <img src="img/fire1.png" onerror="this.onerror=null; this.src='https://placehold.co/120x90/4a5568/a0aec0?text=Sem+Img';" alt="Escanor" class="w-full h-full object-cover">
+                    </div>
+                    <span class="card-name">Escanor</span>
+                    <span class="card-attribute card-class">Tank</span>
+                    <span class="card-effect-text">Tem 25% de chance de atacar junto...</span>
+                    <div class="card-stats">
+                        <span>ATK: 3-5</span>
+                        <span class="card-hp-text">VIDA: 42/42</span>
+                    </div>
+                    <div class="card-hp-bar"><div class="card-hp-fill" style="width: 100%;"></div></div>
+                </div>
+                <div class="card element-color-agua">
+                    <div class="card-image">
+                        <img src="img/water3.png" onerror="this.onerror=null; this.src='https://placehold.co/120x90/4a5568/a0aec0?text=Sem+Img';" alt="Tobirama" class="w-full h-full object-cover">
+                    </div>
+                    <span class="card-name">Tobirama</span>
+                    <span class="card-attribute card-class">Damage</span>
+                    <span class="card-effect-text">O dano na criatura do elemento Fogo é aumentado em 15.</span>
+                    <div class="card-stats">
+                        <span>ATK: 13-15</span>
+                        <span class="card-hp-text">VIDA: 22/22</span>
+                    </div>
+                    <div class="card-hp-bar"><div class="card-hp-fill" style="width: 100%;"></div></div>
+                </div>
+                <div class="card element-color-terra">
+                    <div class="card-image">
+                        <img src="img/light2.png" onerror="this.onerror=null; this.src='https://placehold.co/120x90/4a5568/a0aec0?text=Sem+Img';" alt="Edward Elric" class="w-full h-full object-cover">
+                    </div>
+                    <span class="card-name">Naruto</span>
+                    <span class="card-attribute card-class">Tank</span>
+                    <span class="card-effect-text">Naruto concede 7 de Escudo (absorve os próximos 7 de dano)...</span>
+                    <div class="card-stats">
+                        <span>ATK: 4-5</span>
+                        <span class="card-hp-text">VIDA: 52/52</span>
+                    </div>
+                    <div class="card-hp-bar"><div class="card-hp-fill" style="width: 100%;"></div></div>
+                </div>
+                <div class="card element-color-ar">
+                    <div class="card-image">
+                        <img src="img/wind3.png" onerror="this.onerror=null; this.src='https://placehold.co/120x90/4a5568/a0aec0?text=Sem+Img';" alt="Toji" class="w-full h-full object-cover">
+                    </div>
+                    <span class="card-name">Toji</span>
+                    <span class="card-attribute card-class">Damage</span>
+                    <span class="card-effect-text">Sempre ataca duas vezes.</span>
+                    <div class="card-stats">
+                        <span>ATK: 14-17</span>
+                        <span class="card-hp-text">VIDA: 20/20</span>
+                    </div>
+                    <div class="card-hp-bar"><div class="card-hp-fill" style="width: 100%;"></div></div>
+                </div>
+                <div class="card element-color-luz">
+                    <div class="card-image">
+                        <img src="img/light3.png" onerror="this.onerror=null; this.src='https://placehold.co/120x90/4a5568/a0aec0?text=Sem+Img';" alt="Monstro Luz" class="w-full h-full object-cover">
+                    </div>
+                    <span class="card-name">Gojo</span>
+                    <span class="card-attribute card-class">Damage</span>
+                    <span class="card-effect-text">Tem 20% de dar o dano dobrado, sem aplicar o multiplicador ofensivo de dano de elemento para ele.</span>
+                    <div class="card-stats">
+                        <span>ATK: 14-17</span>
+                        <span class="card-hp-text">VIDA: 22/22</span>
+                    </div>
+                    <div class="card-hp-bar"><div class="card-hp-fill" style="width: 100%;"></div></div>
+                </div>
+            </div>
+            <button id="startButton" class="bg-gradient-to-r from-green-500 to-emerald-600 hover:from-green-600 hover:to-emerald-700 text-white font-bold py-4 px-12 rounded-full shadow-lg transform transition-all duration-300 hover:scale-105">
+                Iniciar Duelo
+            </button>
+        </div>
+
+        <div id="playerSetup" class="hidden flex-col items-center justify-center space-y-6 bg-gray-800 p-8 rounded-xl shadow-2xl">
+            <h2 class="text-3xl font-bold text-yellow-300 mb-4">Configurar Jogadores</h2>
+            <div class="flex flex-col space-y-4 w-full max-w-sm">
+                <label for="player1Name" class="text-lg text-gray-300">Nome do Jogador 1:</label>
+                <input type="text" id="player1Name" placeholder="Jogador 1" class="p-3 rounded-lg bg-gray-700 border border-gray-600 text-white placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-yellow-500" />
+                <label for="player2Name" class="text-lg text-gray-300">Nome do Jogador 2:</label>
+                <input type="text" id="player2Name" placeholder="Jogador 2" class="p-3 rounded-lg bg-gray-700 border border-gray-600 text-white placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-yellow-500" />
+            </div>
+            <button id="startDraftButton" class="bg-gradient-to-r from-blue-500 to-indigo-600 hover:from-blue-600 hover:to-indigo-700 text-white font-bold py-3 px-8 rounded-full shadow-lg transform transition-all duration-300 hover:scale-105">
+                Começar Draft
+            </button>
+        </div>
+
+        <div id="draftPhase" class="hidden flex-col items-center justify-center space-y-6 p-4 w-full">
+            <h2 id="draftTurnText" class="text-3xl font-bold text-yellow-300 mb-4 text-center"></h2>
+
+           <div class="flex flex-col w-full max-w-6xl space-y-6">
+                <div class="bg-gray-800 p-6 rounded-xl shadow-lg border-2 border-gray-700">
+                    <h3 class="text-2xl font-semibold text-blue-300 mb-4 text-center">Tanks Disponíveis</h3>
+                    <div id="availableTanksContainer" class="grid grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 gap-4">
+                    </div>
+                </div>
+
+                <div class="bg-gray-800 p-6 rounded-xl shadow-lg border-2 border-gray-700">
+                    <h3 class="text-2xl font-semibold text-red-300 mb-4 text-center">Damage Disponíveis</h3>
+                    <div id="availableDamageContainer" class="grid grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 gap-4">
+                    </div>
+                </div>
+
+                <div class="bg-gray-800 p-6 rounded-xl shadow-lg border-2 border-gray-700">
+                    <h3 class="text-2xl font-semibold text-green-300 mb-4 text-center">Healers Disponíveis</h3>
+                    <div id="availableHealersContainer" class="grid grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 gap-4">
+                    </div>
+                </div>
+
+                <div class="bg-gray-800 p-6 rounded-xl shadow-lg border-2 border-gray-700">
+                    <h3 class="text-2xl font-semibold text-purple-300 mb-4 text-center">Feiticeiros Disponíveis</h3>
+                    <div id="availableFeiticeirosContainer" class="grid grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 gap-4">
+                    </div>
+                </div>
+                </div>
+
+            <div class="flex flex-col md:flex-row justify-around w-full max-w-6xl mt-8 space-y-6 md:space-y-0 md:space-x-8">
+                <div class="bg-gray-800 p-6 rounded-xl shadow-lg border-2 border-gray-700 w-full md:w-1/2">
+                    <h3 id="player1DraftName" class="text-2xl font-semibold text-blue-400 mb-4 text-center"></h3>
+                    <div id="player1DraftCards" class="grid grid-cols-2 gap-3 min-h-[220px] border border-dashed border-gray-600 p-2 rounded">
+                        </div>
+                </div>
+                <div class="bg-gray-800 p-6 rounded-xl shadow-lg border-2 border-gray-700 w-full md:w-1/2">
+                    <h3 id="player2DraftName" class="text-2xl font-semibold text-red-400 mb-4 text-center"></h3>
+                    <div id="player2DraftCards" class="grid grid-cols-2 gap-3 min-h-[220px] border border-dashed border-gray-600 p-2 rounded">
+                        </div>
+                </div>
+            </div>
+            <button id="startBattleButton" class="bg-gradient-to-r from-purple-500 to-indigo-600 hover:from-purple-600 hover:to-indigo-700 text-white font-bold py-3 px-8 rounded-full shadow-lg transform transition-all duration-300 hover:scale-105 mt-6 hidden">
+                Ir para Batalha!
+            </button>
+        </div>
+
+        <div id="battlePhase" class="hidden flex-col items-center justify-center w-full max-w-5xl space-y-8 p-4 relative">
+            <h2 id="battleTurnText" class="text-3xl font-bold text-yellow-300 text-center"></h2>
+
+            <div id="battlePhaseContent" class="flex flex-row justify-around items-start w-full gap-4">
+                <div id="player2Battlefield" class="flex flex-col items-center space-y-2">
+                    <h3 id="player2BattleName" class="text-2xl font-semibold text-red-400 mb-2"></h3>
+                    <div id="player2BattlefieldContainer" class="flex flex-col items-center w-full p-4 rounded-lg transition-all duration-300 bg-gray-700">
+                        <div class="battlefield-row mb-2">
+                            <div id="p2_pos1" class="battle-card-slot"></div>
+                            <div id="p2_pos2" class="battle-card-slot"></div>
+                        </div>
+                        <div class="battlefield-row">
+                            <div id="p2_pos3" class="battle-card-slot"></div>
+                            <div id="p2_pos4" class="battle-card-slot"></div>
+                            <div id="p2_pos5" class="battle-card-slot"></div>
+                        </div>
+                    </div>
+                </div>
+
+                <p id="vsText" class="align-self-center flex-shrink-0 text-4xl font-bold text-gray-500 my-4 md:my-0">VS</p>
+
+                <div id="player1Battlefield" class="flex flex-col items-center space-y-2">
+                    <h3 id="player1BattleName" class="text-2xl font-semibold text-blue-400 mb-2"></h3>
+                    <div id="player1BattlefieldContainer" class="flex flex-col items-center w-full p-4 rounded-lg transition-all duration-300 bg-gray-700">
+                        <div class="battlefield-row mb-2">
+                            <div id="p1_pos1" class="battle-card-slot"></div>
+                            <div id="p1_pos2" class="battle-card-slot"></div>
+                        </div>
+                        <div class="battlefield-row">
+                            <div id="p1_pos3" class="battle-card-slot"></div>
+                            <div id="p1_pos4" class="battle-card-slot"></div>
+                            <div id="p1_pos5" class="battle-card-slot"></div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <div id="actionButtons" class="flex space-x-4 mt-8">
+                <button id="attackButton" class="bg-gradient-to-r from-red-500 to-rose-600 hover:from-red-600 hover:to-rose-700 text-white font-bold py-3 px-8 rounded-full shadow-lg transform transition-all duration-300 hover:scale-105 hidden">
+                    Atacar
+                </button>
+                <button id="healButton" class="bg-gradient-to-r from-green-500 to-lime-600 hover:from-green-600 hover:to-lime-700 text-white font-bold py-3 px-8 rounded-full shadow-lg transform transition-all duration-300 hover:scale-105 hidden">
+                    Curar
+                </button>
+                <button id="forfeitButton" class="bg-gradient-to-r from-gray-500 to-gray-600 hover:from-gray-600 hover:to-gray-700 text-white font-bold py-3 px-8 rounded-full shadow-lg transform transition-all duration-300 hover:scale-105">
+                    Desistir
+                </button>
+            </div>
+            <div id="gameLog" class="bg-gray-800 p-4 rounded-lg mt-4 w-full max-w-4xl max-h-32 overflow-y-auto text-sm text-gray-300">
+                </div>
+        </div>
+
+        <div id="gameOverScreen" class="hidden flex-col items-center justify-center space-y-6 bg-gray-800 p-12 rounded-xl shadow-2xl">
+            <h2 id="victoryMessage" class="text-4xl font-bold text-yellow-300 text-center"></h2>
+            <button id="resetGameButton" class="bg-gradient-to-r from-purple-500 to-fuchsia-600 hover:from-purple-600 hover:to-fuchsia-700 text-white font-bold py-4 px-12 rounded-full shadow-lg transform transition-all duration-300 hover:scale-105">
+                Novo Jogo
+            </button>
+        </div>
+
+        <div id="cardDetailModal" class="modal-overlay hidden">
+            <div class="modal-content">
+                <button class="modal-close-button" onclick="game.closeCardDetailModal()">×</button>
+                <div class="flex flex-col items-center space-y-4">
+                    <div id="modalCardImage" class="w-40 h-32 bg-gray-700 rounded-lg flex items-center justify-center text-gray-400 text-lg">Monstro</div>
+                    <h3 id="modalCardName" class="text-3xl font-bold text-yellow-300"></h3>
+                    <p id="modalCardClass" class="text-lg italic text-gray-300"></p>
+                    <p id="modalCardStats" class="text-xl font-semibold"></p>
+                    <p id="modalCardElement" class="text-md text-gray-400"></p>
+                    <div class="bg-gray-700 p-4 rounded-lg w-full">
+                        <p class="font-bold mb-2">Efeito Especial:</p>
+                        <p id="modalCardEffect" class="text-md text-gray-200"></p>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script type="module" src="js/main.js"></script>
+</body>
+</html>
