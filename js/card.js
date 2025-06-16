@@ -151,7 +151,7 @@ export const allCards = [
         return 0;
     }),
     new Card('water4', 'Tomioka', 'Damage', [13, 17], 20, 'Agua', 'Agua: Pode atacar o Healer inimigo mesmo com o Tank ainda vivo.', null),
-    new Card('water5', 'Noelle', 'Healer', [6, 8], 30, 'Agua', 'Agua: Ao curar o aliado, aumenta a cura em 10 quando tem  outro aliado de Água no time.', async (game, self, target) => {
+    new Card('water5', 'Noelle', 'Healer', [8, 10], 30, 'Agua', 'Agua: Ao curar o aliado, aumenta a cura em 10 quando tem  outro aliado de Água no time.', async (game, self, target) => {
         if (game.isProcessingHeal && self.id === game.selectedAttacker.id && target) {
             const waterAllies = game.getPlayersCards(self.owner).filter(c => c.element === 'Agua' && c.id !== self.id);
             if (waterAllies.length >= 1) {
@@ -359,7 +359,7 @@ export const allCards = [
         }
         return 0;
     }),
-    new Card('earth5', 'Tsunade', 'Healer', [10, 12], 28, 'Terra', 'Terra: No início do turno do jogador, se Tsunade tiver menos que sua Vida máxima, ele se cura em 5.', async (game, self, target) => {
+    new Card('earth5', 'Tsunade', 'Healer', [16, 18], 28, 'Terra', 'Terra: No início do turno do jogador, se Tsunade tiver menos que sua Vida máxima, ele se cura em 5.', async (game, self, target) => {
         if (game.currentPhase === 'battle' && game.currentPlayerId === self.owner && self.currentLife < self.maxLife && self.currentLife > 0) {
             game.healCard(self, 5);
             game.addLog(`${self.name} (Terra) regenerou 5 de vida. Vida: ${self.currentLife}`);
@@ -445,18 +445,18 @@ new Card('earth7', 'Gon', 'Damage', [5, 6], 15, 'Terra', 'Terra: Ao ser derrotad
         }
         return false;
     }),
-    new Card('wind5', 'Akali', 'Healer', [10, 12], 31, 'Ar', 'Ar: Quando Akali cura um aliado, esse aliado ganha 50% de chance de esquiva em seu próximo turno.', async (game, self, target) => {
+    new Card('wind5', 'Akali', 'Healer', [10, 12], 31, 'Ar', 'Ar: Quando Akali cura um aliado, esse aliado ganha 70% de chance de esquiva em seu próximo turno.', async (game, self, target) => {
         if (game.isProcessingHeal && self.id === game.selectedAttacker.id && target) {
-            game.applyEffect(target, 'EsquivaChance', 1, 0.50); 
-            game.addLog(`${self.name} (Ar) concedeu 50% de chance de esquiva a ${target.name}.`);
+            game.applyEffect(target, 'EsquivaChance', 1, 0.70); 
+            game.addLog(`${self.name} (Ar) concedeu 70% de chance de esquiva a ${target.name}.`);
             game.updateUI();
         }
     }),
     new Card('wind6', 'Zoro', 'Damage', [13, 16], 24, 'Ar', 'Ar: A cada ataque de Zoro aumenta em 1-1 o pr\u00f3prio ataque.', async (game, self, target) => {
-    // Este specialEffect ser\u00e1 chamado AP\u00d3S cada ataque de Zoro
+    // Este specialEffect será chamado após cada ataque de Zoro
     console.log(`%c[DEBUG ZORO] Habilidade de Zoro verificada. Atacante: %c${self.name}%c.`, 'color: #8B4513;', 'color: yellow;', 'color: #8B4513;'); // Brown
 
-    if (game.isProcessingAttack && self.id === game.selectedAttacker.id) { // Garante que \u00e9 Zoro e que ele est\u00e1 atacando
+    if (game.isProcessingAttack && self.id === game.selectedAttacker.id) { // Garante que é Zoro e que ele está atacando
         self.attackMin += 1;
         self.attackMax += 1;
         game.addLog(`${self.name} (Vento) aumentou seu ataque em 1! Novo ATK: <span class="math-inline">\{self\.attackMin\}\-</span>{self.attackMax}.`);
@@ -466,7 +466,7 @@ new Card('earth7', 'Gon', 'Damage', [5, 6], 15, 'Terra', 'Terra: Ao ser derrotad
     }
     return false;
 }, 'img/wind6.png'),
-new Card('wind7', 'Meimei', 'Healer', [8, 12], 22, 'Ar', 'Ar: Sempre que Meimei cura um aliado, ela causa 3 de dano a todos os inimigos com uma rajada de corvos.', async (game, self, target) => {
+new Card('wind7', 'Meimei', 'Healer', [12, 14], 22, 'Ar', 'Ar: Sempre que Meimei cura um aliado, ela causa 4 de dano a todos os inimigos com uma rajada de corvos.', async (game, self, target) => {
         // Este specialEffect será chamado APÓS Meimei realizar uma cura (em game.performHeal)
         console.log(`%c[DEBUG MEIMEI] Habilidade de Meimei (Rajada de Corvos) verificada. Curando: %c${target.name}%c.`, 'color: #20B2AA;', 'color: yellow;', 'color: #20B2AA;'); // Azul-esverdeado para Ar
 
@@ -486,10 +486,10 @@ new Card('wind7', 'Meimei', 'Healer', [8, 12], 22, 'Ar', 'Ar: Sempre que Meimei 
             
             if (enemyCards.length > 0) {
                 for (const enemy of enemyCards) {
-                    // Causa 3 de dano a cada inimigo
-                    game.dealDamage(enemy, 3, self); // Passa 'self' como atacante para lidar com possíveis defesas do alvo
-                    game.addLog(`  ${enemy.name} recebeu 3 de dano da Rajada de Corvos.`);
-                    console.log(`%c[DEBUG MEIMEI] ${enemy.name} atingido por 3 de dano da Rajada de Corvos.`, 'color: #20B2AA;');
+                    // Causa 4 de dano a cada inimigo
+                    game.dealDamage(enemy, 4, self); // Passa 'self' como atacante para lidar com possíveis defesas do alvo
+                    game.addLog(`  ${enemy.name} recebeu 4 de dano da Rajada de Corvos.`);
+                    console.log(`%c[DEBUG MEIMEI] ${enemy.name} atingido por 4 de dano da Rajada de Corvos.`, 'color: #20B2AA;');
                 }
                 game.updateUI(); // Atualiza a UI após todos os danos serem aplicados
                 return true;
@@ -584,11 +584,11 @@ new Card('wind7', 'Meimei', 'Healer', [8, 12], 22, 'Ar', 'Ar: Sempre que Meimei 
     return false;
 }),
 
-new Card('dark6', 'Merlin [Dark]', 'Healer', [7, 9], 30, 'Dark', 'Dark: Para curar um aliado, ela drena a mesma quantidade de vida de um inimigo aleat\u00f3rio.', async (game, self, target) => {
-    // Este specialEffect ser\u00e1 chamado quando Merlin for usada para curar
+new Card('dark6', 'Merlin [Dark]', 'Healer', [11, 12], 30, 'Dark', 'Dark: Para curar um aliado, ela drena a mesma quantidade de vida de um inimigo aleat\u00f3rio.', async (game, self, target) => {
+    // Este specialEffect será chamado quando Merlin for usada para curar
     console.log(`%c[DEBUG MERLIN] Habilidade de Merlin (DRENAR CURA) verificada. Curando: %c${target.name}%c.`, 'color: darkviolet;', 'color: yellow;', 'color: darkviolet;');
 
-    if (game.currentPhase === 'battle' && self.currentLife > 0 && target && target.currentLife > 0) { // Garante que a batalha est\u00e1 ativa e os alvos s\u00e3o v\u00e1lidos
+    if (game.currentPhase === 'battle' && self.currentLife > 0 && target && target.currentLife > 0) { // Garante que a batalha está ativa e os alvos são válidos
         let healAmount = Math.floor(Math.random() * (self.attackMax - self.attackMin + 1)) + self.attackMin;
         console.log(`%c[DEBUG MERLIN] Valor base de cura/dreno: %c${healAmount}`, 'color: darkviolet;', 'color: yellow;');
 
@@ -693,7 +693,7 @@ new Card('light2', 'Naruto', 'Tank', [4, 5], 52, 'Luz', 'Luz: No início do turn
         return 1; 
     }),
     new Card('light4', 'Kakashi', 'Damage', [12, 15], 23, 'Luz', 'Luz: O ataque de Kakashi ignora todos os efeitos de "Escudo" e "Esquiva" do alvo.', null),
-    new Card('light5', 'Julius Novachrono', 'Healer', [7, 9], 30, 'Luz', 'Luz: Uma vez por partida, Julius Novachrono pode escolher um aliado para remover todos os efeitos negativos (ex: Amaldiçoar, Queimar, Enraizar, Atordoar) dele e curá-lo em 10 HP.', async (game, self, target) => {
+    new Card('light5', 'Julius Novachrono', 'Healer', [12, 15], 30, 'Luz', 'Luz: Uma vez por partida, Julius Novachrono pode escolher um aliado para remover todos os efeitos negativos (ex: Amaldiçoar, Queimar, Enraizar, Atordoar) dele e curá-lo em 10 HP.', async (game, self, target) => {
         if (game.currentPhase === 'battle' && game.currentPlayerId === self.owner && !self.hasUsedSpecialAbilityOnce) {
             if (target) {
                  let effectsRemoved = false;
