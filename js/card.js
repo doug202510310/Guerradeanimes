@@ -290,6 +290,31 @@ export const allCards = [
         }
         return false;
     }, 'img/fire6.png'), // Certifique-se de ter 'img/fire6.png'
+     new Card('fire7', 'Vegeta', 'Tank', [4, 6], 52, 'Fogo', 'Fogo: Diminui o ataque do inimigo que o atacar em 2-2 (mínimo de 10).', async (game, self, target) => {
+        // Este specialEffect será chamado APÓS Vegeta receber dano
+        console.log(`%c[DEBUG VEGETA] Habilidade de Vegeta (Redu\u00e7\u00e3o de ATK) verificada. Alvo de ataque: %c${self.name}%c.`, 'color: #FF4500;', 'color: yellow;', 'color: #FF4500;'); // Laranja avermelhado para Fogo
+
+        // Verifica se Vegeta está sendo o alvo do ataque e se o ataque está sendo processado
+        if (game.isProcessingAttack && self.id === target.id) {
+            const attacker = game.selectedAttacker; // O atacante que atingiu Vegeta
+            
+            if (attacker && attacker.owner !== self.owner && attacker.currentLife > 0) {
+                const reductionAmount = 2; // Diminui em 2-2 o ataque
+
+                // Aplica a redução no ataque mínimo e máximo do atacante
+                attacker.attackMin = Math.max(10, attacker.attackMin - reductionAmount); // Mínimo de 10
+                attacker.attackMax = Math.max(10, attacker.attackMax - reductionAmount); // Mínimo de 10
+
+                game.addLog(`${self.name} (Fogo) diminuiu o ataque de ${attacker.name} em ${reductionAmount}! Novo ATK de ${attacker.name}: ${attacker.attackMin}-${attacker.attackMax}.`);
+                console.log(`%c[DEBUG VEGETA] Ataque de ${attacker.name} reduzido para: %c${attacker.attackMin}-${attacker.attackMax}`, 'color: #FF4500;', 'color: yellow;');
+                
+                game.updateUI(); // Atualiza a UI para refletir o novo ataque do inimigo
+                return true;
+            }
+        }
+        return false;
+    }, 'img/fire7.png'), // Certifique-se de ter 'img/fire7.png'
+
 
     // Terra
     new Card('earth1', 'Gaara', 'Tank', [1, 3], 45, 'Terra', 'Terra: Quando Gaara recebe dano, ele tem 50% de chance de reduzir esse dano em 5.', async (game, self, target) => {
@@ -357,6 +382,28 @@ export const allCards = [
     console.log(`%c[DEBUG LUFFY] Luffy n\u00e3o aumentou ataque: Derrotado.`, 'color: red;');
     return false;
 }, 'img/earth6.png'),
+new Card('earth7', 'Gon', 'Damage', [5, 6], 15, 'Terra', 'Terra: Ao ser derrotado, ele se transforma em Gon Adulto.', async (game, self, target) => {
+        // Este specialEffect será chamado quando Gon (criança) for derrotado.
+        console.log(`%c[DEBUG GON CRIANÇA] Habilidade de transforma\u00e7\u00e3o de Gon verificada. Derrotado: %c${self.name}%c.`, 'color: #8B4513;', 'color: yellow;', 'color: #8B4513;'); // Marrom para Terra
+
+        // A flag 'isCardDefeated' será verdadeira quando dealDamage chamar essa habilidade.
+        if (game.isCardDefeated) { // Verifica se a carta foi derrotada
+            game.addLog(`${self.name} foi derrotado! Mas sua f\u00faria despertou... Ele se transforma!`);
+
+            // Tocar som de transformação (se você criar um audio/GonTransform.mp3)
+            if (game.gonTransformSound) {
+                game.gonTransformSound.play();
+            } else {
+                console.warn("Som de transforma\u00e7\u00e3o do Gon n\u00e3o configurado.");
+            }
+
+            // A lógica real da transformação será em game.js na função dealDamage.
+            // Aqui, apenas indicamos que a habilidade foi processada.
+            return true;
+        }
+        return false;
+    }, 'img/earth7.png'), // Certifique-se de ter 'img/earth7.png'
+
     // Vento
     new Card('wind1', 'Obito', 'Tank', [2, 4], 47, 'Ar', 'Ar: Obito tem 35% de chance de esquivar de qualquer ataque recebido, não sofrendo dano.', async (game, self, target) => {
         if (game.isProcessingAttack && self.id === target.id && Math.random() < 0.35) {
@@ -805,5 +852,17 @@ export const magoNegroCardData = {
             return true;
         }
         return false;
-    }
+    }, // <-- Adiciona a vírgula aqui
+};
+    export const gonAdultoCardData = {
+    id: 'gonadulto', // ID único para Gon Adulto
+    name: 'Gon Adulto',
+    image: 'img/gonadulto.png', // Imagem do Gon Adulto
+    type: 'Damage',
+    attackRange: [14, 18],
+    maxLife: 25,
+    element: 'Terra', // Mantém o elemento Terra
+    effectDescription: 'Terra: Uma forma liberada de poder insano.',
+    specialEffect: null // Gon Adulto não tem um efeito especial on-transform ou por turno, ele é pura estatística
+
 };
