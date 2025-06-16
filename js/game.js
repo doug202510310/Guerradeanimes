@@ -568,6 +568,9 @@ if (uzuiPlayer2 && uzuiPlayer2.specialEffect && !uzuiPlayer2.hasUsedSpecialAbili
         if (card.id === 'earth5' && card.specialEffect) {
             await card.specialEffect(this, card, null); 
         }
+         if (card.id === 'fire6' && card.specialEffect) {
+        await card.specialEffect(this, card, null); // Chama o specialEffect de Benimaru
+    }
         
         // Toph's shield (earth2)
         if (card.id === 'earth2' && card.specialEffect) {
@@ -966,49 +969,66 @@ if (uzuiPlayer2 && uzuiPlayer2.specialEffect && !uzuiPlayer2.hasUsedSpecialAbili
     this.isProcessingAttack = false; // Marca que o ataque terminou
 },
     performHeal: async function(healer, target) {
-        this.isProcessingHeal = true;
-        this.healSound.play(); 
+          this.isProcessingHeal = true;
+    this.healSound.play();
 
-        const healerElement = document.getElementById(`card-${healer.id}`);
-        if (healerElement) {
-            healerElement.style.animation = 'attack-move 0.3s ease-out forwards'; 
-            await sleep(300);
-        }
+    const healerElement = document.getElementById(`card-${healer.id}`);
+    if (healerElement) {
+        healerElement.style.animation = 'attack-move 0.3s ease-out forwards';
+        await this.sleep(300);
+    }
 
-        let healAmount = Math.floor(Math.random() * (healer.attackMax - healer.attackMin + 1)) + healer.attackMin;
+    let healAmount = Math.floor(Math.random() * (healer.attackMax - healer.attackMin + 1)) + healer.attackMin;
 
-        if (healer.id === 'water5' && healer.specialEffect) {
-            healAmount += await healer.specialEffect(this, healer, target);
-        }
-        
-        this.healCard(target, healAmount);
-        this.addLog(`${healer.name} curou ${healAmount} de vida de ${target.name}. Vida: ${target.currentLife}`);
+    if (healer.id === 'water5' && healer.specialEffect) { // Noelle
+        healAmount += await healer.specialEffect(this, healer, target);
+    }
+            
+    // Aplica a cura ao alvo primeiro
+    this.healCard(target, healAmount);
+    this.addLog(`${healer.name} curou ${healAmount} de vida de ${target.name}. Vida: ${target.currentLife}`);
 
-        if (healer.id === 'wind5' && healer.specialEffect) {
-            await healer.specialEffect(this, healer, target);
-        }
+    // Habilidades de Healers que ativam APÓS a cura
+    if (healer.id === 'wind5' && healer.specialEffect) { // Akali (Ar) - Concede EsquivaChance
+        await healer.specialEffect(this, healer, target);
+    }
+    
+    if (healer.id === 'wind7' && healer.specialEffect) { // <--- NOVO: Meimei (Ar) - Causa dano em área
+        await healer.specialEffect(this, healer, target);
+    }
 
-        if (healer.id === 'light5' && healer.specialEffect) {
-            await healer.specialEffect(this, healer, target); 
-        }
-        if (healer.id === 'dark5' && healer.specialEffect) {
-            await healer.specialEffect(this, healer, target); 
-        }
+    if (healer.id === 'light5' && healer.specialEffect) { // Julius Novachrono (Luz) - Purifica e cura
+        await healer.specialEffect(this, healer, target);
+    }
+    if (healer.id === 'dark5' && healer.specialEffect) {
+        // Sung Jin-woo (Dark): Sua habilidade de BUFF TANK já é ativada em startBattlePhase.
+        // Sua habilidade de invocação de Igris é ativada em dealDamage quando um aliado morre.
+        // Se houver algum outro specialEffect de Sung Jin-woo que ative na cura, ele viria aqui.
+        // No momento, o specialEffect de Sung Jin-woo no card.js NÃO espera ser chamado por performHeal.
+        // Verifique se você realmente quer chamar o specialEffect dele aqui.
+        // Se a lógica do specialEffect do dark5 que está no card.js é APENAS para buffar o tank no início da batalha,
+        // então essa linha aqui (healer.id === 'dark5' && healer.specialEffect) pode ser REMOVIDA.
+        // A menos que você tenha adicionado uma nova função de specialEffect para ele que ative na cura.
+        // Pelo que vi no card.js, o specialEffect do Sung Jin-woo é apenas para o BUFF INICIAL NO TANK.
+        // Então, essa linha provavelmente deve ser removida.
+        // await healer.specialEffect(this, healer, target); // <-- REMOVA OU COMENTE ESTA LINHA SE O specialEffect DO SUNG JIN-WOO NÃO FOR DE CURA
+    }
 
+    // Animação do alvo (recebendo cura)
+    const targetElement = document.getElementById(`card-${target.id}`);
+    if (targetElement) {
+        targetElement.style.animation = 'target-heal 0.6s ease-out';
+        await this.sleep(600);
+        targetElement.style.animation = '';
+    }
 
-        const targetElement = document.getElementById(`card-${target.id}`);
-        if (targetElement) {
-            targetElement.style.animation = 'target-heal 0.6s ease-out';
-            await sleep(600);
-            targetElement.style.animation = '';
-        }
+    // Limpa a animação do curandeiro
+    if (healerElement) {
+        healerElement.style.animation = '';
+    }
 
-        if (healerElement) {
-            healerElement.style.animation = '';
-        }
-
-        this.isProcessingHeal = false;
-    },
+    this.isProcessingHeal = false;
+},
 
 dealDamage: async function(targetCard, amount, attacker = null) { // Adicione attacker como parametro opcional
     let damageToDeal = amount;

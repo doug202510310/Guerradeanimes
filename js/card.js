@@ -257,6 +257,39 @@ export const allCards = [
         }
         return false;
     }),
+    new Card('fire6', 'Benimaru', 'Damage', [12, 14], 22, 'Fogo', 'Fogo: Aumenta em 3-3 de ataque para cada personagem de Fogo no seu time.', async (game, self, target) => {
+        // Este specialEffect será chamado no INÍCIO DO TURNO do jogador de Benimaru.
+        // Ele precisa recalcular o bônus de ataque com base nos aliados de Fogo presentes.
+        
+        // Verifica se a habilidade já foi aplicada no turno atual para evitar re-aplicar se a função for chamada múltiplas vezes.
+        // A propriedade 'hasAttackedThisTurn' é redefinida a cada turno, então podemos usá-la para controlar o "por turno".
+        // Alternativamente, poderíamos adicionar uma nova flag como 'hasAppliedBenimaruBuffThisTurn'.
+        // Para simplicidade, vamos recalcular sempre que for o início do turno do dono.
+        
+        console.log(`%c[DEBUG BENIMARU] Habilidade de Benimaru verificada. Dono: %c${self.owner}%c.`, 'color: #DC143C;', 'color: yellow;', 'color: #DC143C;'); // Carmesim para Fogo
+
+        // Reseta o bônus temporário de ataque de Benimaru ANTES de recalcular
+        self.tempAttackBonus = 0;
+
+        // Encontra todas as cartas de Fogo no time do Benimaru (incluindo ele mesmo, se vivo)
+        const fireAllies = game.getPlayersCards(self.owner).filter(c => c.element === 'Fogo' && c.currentLife > 0);
+        
+        // O bônus é 3 por cada personagem de Fogo (incluindo ele mesmo)
+        const bonusPerFireCard = 3;
+        const totalBonus = fireAllies.length * bonusPerFireCard;
+
+        if (totalBonus > 0) {
+            self.tempAttackBonus += totalBonus;
+            game.addLog(`${self.name} (Fogo) aumentou seu ataque em ${totalBonus} devido a ${fireAllies.length} aliados de Fogo! Novo ATK: ${self.attackMin + self.tempAttackBonus}-${self.attackMax + self.tempAttackBonus}.`);
+            console.log(`%c[DEBUG BENIMARU] Ataque de Benimaru ajustado para: %c${self.attackMin + self.tempAttackBonus}-${self.attackMax + self.tempAttackBonus}`, 'color: #DC143C;', 'color: yellow;');
+            game.updateUI(); // Atualiza a UI para refletir o novo ataque
+            return true;
+        } else {
+            game.addLog(`${self.name} (Fogo) não encontrou aliados de Fogo para aumentar seu ataque.`);
+            console.log(`%c[DEBUG BENIMARU] Nenhum aliado de Fogo encontrado.`, 'color: #DC143C;');
+        }
+        return false;
+    }, 'img/fire6.png'), // Certifique-se de ter 'img/fire6.png'
 
     // Terra
     new Card('earth1', 'Gaara', 'Tank', [1, 3], 45, 'Terra', 'Terra: Quando Gaara recebe dano, ele tem 50% de chance de reduzir esse dano em 5.', async (game, self, target) => {
@@ -384,7 +417,40 @@ export const allCards = [
     }
     return false;
 }, 'img/wind6.png'),
+new Card('wind7', 'Meimei', 'Healer', [8, 12], 22, 'Ar', 'Ar: Sempre que Meimei cura um aliado, ela causa 3 de dano a todos os inimigos com uma rajada de corvos.', async (game, self, target) => {
+        // Este specialEffect será chamado APÓS Meimei realizar uma cura (em game.performHeal)
+        console.log(`%c[DEBUG MEIMEI] Habilidade de Meimei (Rajada de Corvos) verificada. Curando: %c${target.name}%c.`, 'color: #20B2AA;', 'color: yellow;', 'color: #20B2AA;'); // Azul-esverdeado para Ar
 
+        // Verifica se a habilidade está sendo ativada após uma cura (game.isProcessingHeal)
+        // E se foi a própria Meimei que realizou a cura (self.id === game.selectedAttacker.id)
+        if (game.isProcessingHeal && game.selectedAttacker && game.selectedAttacker.id === self.id) {
+            game.addLog(`${self.name} (Ar) libera uma rajada de corvos nos inimigos!`);
+            
+            // Tocar o som da Meimei (opcional, se você criar um audio/Meimei.mp3)
+            if (game.meimeiSound) { // Verifique se game.meimeiSound existe
+                game.meimeiSound.play();
+            } else {
+                console.warn("Som da Meimei não configurado.");
+            }
+
+            const enemyCards = game.getPlayersCards(game.getOpponent(self.owner)).filter(c => c.currentLife > 0);
+            
+            if (enemyCards.length > 0) {
+                for (const enemy of enemyCards) {
+                    // Causa 3 de dano a cada inimigo
+                    game.dealDamage(enemy, 3, self); // Passa 'self' como atacante para lidar com possíveis defesas do alvo
+                    game.addLog(`  ${enemy.name} recebeu 3 de dano da Rajada de Corvos.`);
+                    console.log(`%c[DEBUG MEIMEI] ${enemy.name} atingido por 3 de dano da Rajada de Corvos.`, 'color: #20B2AA;');
+                }
+                game.updateUI(); // Atualiza a UI após todos os danos serem aplicados
+                return true;
+            } else {
+                game.addLog(`${self.name} (Ar) não encontrou inimigos para atingir com a Rajada de Corvos.`);
+                console.log(`%c[DEBUG MEIMEI] Nenhum inimigo para Rajada de Corvos.`, 'color: #20B2AA;');
+            }
+        }
+        return false;
+    }, 'img/wind7.png'),
     // Dark
    new Card('dark1', 'Hyakkimaru', 'Tank', [3, 5], 60, 'Dark', 'Dark: No início do primeiro turno, perde metade da vida mas concede o range de ataque dele (3-5) a outra criatura Damage aliada.', async (game, self, target) => {
     console.log(`%c[DEBUG HYAKKIMARU] Habilidade de Hyakkimaru verificada. Dono: %c${self.owner}%c, Vida: %c${self.currentLife}%c, ID: %c${self.id}`, 'color: purple;', 'color: yellow;', 'color: purple;', 'color: yellow;', 'color: purple;', 'color: yellow;');
