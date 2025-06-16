@@ -124,22 +124,24 @@ export class Card {
 // --- Dados de Todas as 30 Cartas ---
 export const allCards = [
     // Água
-    new Card('water1', 'Blastoise', 'Tank', [2, 4], 50, 'Agua', 'Agua: Obriga que os dois primeiros ataques sejam nele, curando esses dois ataques em 3 HP.', async (game, self, target) => {
-        if (game.isProcessingAttack && self.id === target.id && game.attackCountForPlayer[self.owner] <= 2) {
-            self.currentLife = Math.min(self.maxLife, self.currentLife + 3);
-            game.addLog(`${self.name} curou-se em 3 HP do ataque recebido. Vida: ${self.currentLife}`);
-            game.updateUI();
-        }
-    }),
-    new Card('water2', 'Kisame', 'Tank', [1, 3], 48, 'Agua', 'Agua: Inflige 5 de dano sempre que recebe dano na criatura atacante.', async (game, self, target) => {
-        if (game.isProcessingAttack && self.id === target.id) {
-            const attacker = game.selectedAttacker;
-            if (attacker) {
-                game.dealDamage(attacker, 5); 
-                game.addLog(`${self.name} retaliou, causando 5 de dano a ${attacker.name}.`);
-                game.updateUI();
+   new Card('water1', 'Blastoise', 'Tank', [2, 4], 50, 'Agua', 'Agua: Sempre que um aliado ataca, Blastoise se cura em 3 HP.', async (game, self, target) => {
+        // Este specialEffect será chamado APÓS QUALQUER ALIADO de Blastoise realizar um ataque.
+        // A 'game.isProcessingAttack' estará ativa para o ataque do aliado.
+        // 'self' é Blastoise, 'target' é o alvo do ataque do aliado.
+
+        // Condição para ativar: Verificar se Blastoise está vivo e se um ataque está sendo processado
+        // (e que o atacante é um aliado do Blastoise, mas isso será filtrado na chamada em game.js)
+        if (self.currentLife > 0 && game.isProcessingAttack && game.selectedAttacker && game.selectedAttacker.owner === self.owner) {
+            // Garante que o ataque não é do próprio Blastoise (se Blastoise ataca, ele não cura a si mesmo por isso)
+            if (game.selectedAttacker.id !== self.id) {
+                const healAmount = 3;
+                game.healCard(self, healAmount);
+                game.addLog(`${self.name} (Agua) curou-se em ${healAmount} HP porque ${game.selectedAttacker.name} atacou. Vida: ${self.currentLife}`);
+                game.updateUI(); // Atualiza a UI para mostrar a cura
+                return true; // Indica que a habilidade foi ativada
             }
         }
+        return false; // Habilidade não ativada ou condições não met
     }),
     new Card('water3', 'Tobirama', 'Damage', [13, 15], 22, 'Agua', 'Agua: O dano na criatura do elemento Fogo é aumentado em 15.', async (game, self, target) => {
         if (target && target.element === 'Fogo') {
@@ -290,30 +292,30 @@ export const allCards = [
         }
         return false;
     }, 'img/fire6.png'), // Certifique-se de ter 'img/fire6.png'
-     new Card('fire7', 'Vegeta', 'Tank', [4, 6], 52, 'Fogo', 'Fogo: Diminui o ataque do inimigo que o atacar em 2-2 (mínimo de 10).', async (game, self, target) => {
-        // Este specialEffect será chamado APÓS Vegeta receber dano
-        console.log(`%c[DEBUG VEGETA] Habilidade de Vegeta (Redu\u00e7\u00e3o de ATK) verificada. Alvo de ataque: %c${self.name}%c.`, 'color: #FF4500;', 'color: yellow;', 'color: #FF4500;'); // Laranja avermelhado para Fogo
+    new Card('fire7', 'Vegeta', 'Tank', [4, 6], 52, 'Fogo', 'Fogo: Diminui o ataque do inimigo que o atacar em 2-2 (mínimo de 10).', async (game, self, currentAttackerCard) => { // <-- MUDE 'target' para 'currentAttackerCard' para clareza
+    // Este specialEffect será chamado APÓS Vegeta receber dano
+    console.log(`%c[DEBUG VEGETA] Habilidade de Vegeta (Redu\u00e7\u00e3o de ATK) verificada. Alvo de ataque: %c${self.name}%c.`, 'color: #FF4500;', 'color: yellow;', 'color: #FF4500;');
 
-        // Verifica se Vegeta está sendo o alvo do ataque e se o ataque está sendo processado
-        if (game.isProcessingAttack && self.id === target.id) {
-            const attacker = game.selectedAttacker; // O atacante que atingiu Vegeta
-            
-            if (attacker && attacker.owner !== self.owner && attacker.currentLife > 0) {
-                const reductionAmount = 2; // Diminui em 2-2 o ataque
+    // Verifica se Vegeta está vivo e se há um atacante válido que não seja ele mesmo
+    if (self.currentLife > 0 && currentAttackerCard && currentAttackerCard.owner !== self.owner && currentAttackerCard.currentLife > 0) {
+        // A condição self.id === target.id (do seu código original) foi removida,
+        // pois esta habilidade é chamada em dealDamage, onde 'self' É O VEGETA,
+        // e 'currentAttackerCard' É O ATACANTE, que já foi passado corretamente.
 
-                // Aplica a redução no ataque mínimo e máximo do atacante
-                attacker.attackMin = Math.max(10, attacker.attackMin - reductionAmount); // Mínimo de 10
-                attacker.attackMax = Math.max(10, attacker.attackMax - reductionAmount); // Mínimo de 10
+        const reductionAmount = 2; // Diminui em 2-2 o ataque
 
-                game.addLog(`${self.name} (Fogo) diminuiu o ataque de ${attacker.name} em ${reductionAmount}! Novo ATK de ${attacker.name}: ${attacker.attackMin}-${attacker.attackMax}.`);
-                console.log(`%c[DEBUG VEGETA] Ataque de ${attacker.name} reduzido para: %c${attacker.attackMin}-${attacker.attackMax}`, 'color: #FF4500;', 'color: yellow;');
-                
-                game.updateUI(); // Atualiza a UI para refletir o novo ataque do inimigo
-                return true;
-            }
-        }
-        return false;
-    }, 'img/fire7.png'), // Certifique-se de ter 'img/fire7.png'
+        // Aplica a redução no ataque mínimo e máximo do atacante
+        currentAttackerCard.attackMin = Math.max(10, currentAttackerCard.attackMin - reductionAmount); // Mínimo de 10
+        currentAttackerCard.attackMax = Math.max(10, currentAttackerCard.attackMax - reductionAmount); // Mínimo de 10
+
+        game.addLog(`${self.name} (Fogo) diminuiu o ataque de ${currentAttackerCard.name} em ${reductionAmount}! Novo ATK de ${currentAttackerCard.name}: ${currentAttackerCard.attackMin}-${currentAttackerCard.attackMax}.`);
+        console.log(`%c[DEBUG VEGETA] Ataque de ${currentAttackerCard.name} reduzido para: %c${currentAttackerCard.attackMin}-${currentAttackerCard.attackMax}`, 'color: #FF4500;', 'color: yellow;');
+        
+        game.updateUI(); // Atualiza a UI para refletir o novo ataque do inimigo
+        return true;
+    }
+    return false;
+}, 'img/fire7.png'), // Certifique-se de ter 'img/fire7.png'
 
 
     // Terra

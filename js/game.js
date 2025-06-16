@@ -950,7 +950,7 @@ if (uzuiPlayer2 && uzuiPlayer2.specialEffect && !uzuiPlayer2.hasUsedSpecialAbili
             c.currentLife > 0 &&         // A carta está viva
             c.id !== attacker.id &&      // Não é o atacante principal que acabou de agir
             !c.hasAttackedThisTurn &&    // Não atacou junto ainda neste turno
-            (c.id === 'fire1' || c.id === 'dark7') // É Escanor ou Sukuna
+            (c.id === 'fire1' || c.id === 'dark7' || c.id === 'water1') // É Escanor ou Sukuna
         );
 
         for (const jointAttacker of potentialJointAttackers) {
@@ -1149,9 +1149,8 @@ dealDamage: async function(targetCard, amount, attacker = null) {
     }
     // 5.2. Vegeta (fire7): Diminui ataque do inimigo que o atacar
     // Ativa APÓS receber dano na vida, mas ANTES da checagem de derrota
-    if (targetCard.id === 'fire7' && targetCard.specialEffect && targetCard.currentLife > 0 && damageToApply > 0) {
-        // Passa 'attacker' como o terceiro argumento que o specialEffect de Vegeta espera
-        await targetCard.specialEffect(this, targetCard, attacker);
+   if (targetCard.id === 'fire7' && targetCard.specialEffect && targetCard.currentLife > 0 && damageToApply > 0) {
+        await targetCard.specialEffect(this, targetCard, attacker); // <-- 'attacker' está sendo passado corretamente
     }
     // 5.3. Edward Elric (earth3): Atacante recebe dano
     if (targetCard.id === 'earth3' && targetCard.specialEffect && targetCard.currentLife > 0 && damageToApply > 0) {
@@ -1162,9 +1161,9 @@ dealDamage: async function(targetCard, amount, attacker = null) {
         await targetCard.specialEffect(this, targetCard, targetCard); // Zeref reage ao ser atacado
     }
     // 5.5. Blastoise (water1): Cura em 3 HP nos dois primeiros ataques
-    if (targetCard.id === 'water1' && targetCard.specialEffect && targetCard.currentLife > 0 && damageToApply > 0) {
-        await targetCard.specialEffect(this, targetCard, targetCard); // Blastoise reage ao ser atacado
-    }
+    //if (targetCard.id === 'water1' && targetCard.specialEffect && targetCard.currentLife > 0 && damageToApply > 0) {
+    //    await targetCard.specialEffect(this, targetCard, targetCard); // Blastoise reage ao ser atacado
+    //}
     // 5.6. Kisame (water2): Inflige 5 de dano sempre que recebe dano
     if (targetCard.id === 'water2' && targetCard.specialEffect && targetCard.currentLife > 0 && damageToApply > 0) {
         await targetCard.specialEffect(this, targetCard, targetCard); // Kisame reage ao ser atacado
