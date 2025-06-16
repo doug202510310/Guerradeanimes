@@ -137,7 +137,11 @@ export const game = {
         this.turnTransitionSound = new Audio('audio/turn_transition.mp3'); 
         this.turnTransitionSound.volume = 0.4;
         this.transformationSound = new Audio('audio/transformation.mp3'); // Você precisará criar este arquivo de áudio
-this.transformationSound.volume = 0.6;
+        this.transformationSound.volume = 0.6;
+        this.sukunaSound = new Audio('audio/Sukuna.mp3');
+        this.sukunaSound.volume = 0.7;
+        this.escanorSound = new Audio('audio/Escanor.mp3'); // <--- ADICIONE ESTA LINHA para Escanor
+        this.escanorSound.volume = 0.7; // Ajuste o volume conforme desejar
 
         this.bindEventListeners();
         this.showScreen('mainMenu');
@@ -315,7 +319,7 @@ this.transformationSound.volume = 0.6;
         });
     },
 
-    startBattlePhase: function() {
+   startBattlePhase: async function() {
         // Validação: Verificar se cada jogador escolheu 2 Tanks
         const p1Tanks = this.players.player1.draftedCards.filter(c => c.type === 'Tank').length;
         const p2Tanks = this.players.player2.draftedCards.filter(c => c.type === 'Tank').length;
@@ -394,6 +398,17 @@ this.transformationSound.volume = 0.6;
         console.log(`[DEBUG - BATALHA INICIADA] Ativando habilidade de TRANSFORMAÇÃO do Yugi do Jogador 2!`);
         yugiPlayer2.specialEffect(this, yugiPlayer2, null); 
     }
+    const uzuiPlayer1 = this.players.player1.team.find(c => c.id === 'water6' && c.currentLife > 0);
+const uzuiPlayer2 = this.players.player2.team.find(c => c.id === 'water6' && c.currentLife > 0);
+
+if (uzuiPlayer1 && uzuiPlayer1.specialEffect && !uzuiPlayer1.hasUsedSpecialAbilityOnce) {
+    console.log(`%c[DEBUG - BATALHA INICIADA] Ativando habilidade de Partitura autom\u00e1tica do Uzui do Jogador 1!`, 'color: #00BFFF;'); // Azul vibrante para Uzui
+    await uzuiPlayer1.specialEffect(this, uzuiPlayer1, null); // Passa null para target, pois ele escolhe aleatoriamente
+}
+if (uzuiPlayer2 && uzuiPlayer2.specialEffect && !uzuiPlayer2.hasUsedSpecialAbilityOnce) {
+    console.log(`%c[DEBUG - BATALHA INICIADA] Ativando habilidade de Partitura autom\u00e1tica do Uzui do Jogador 2!`, 'color: #00BFFF;');
+    await uzuiPlayer2.specialEffect(this, uzuiPlayer2, null); // Passa null para target
+}
     
     },
 
@@ -513,32 +528,28 @@ this.transformationSound.volume = 0.6;
 
         // Processa efeitos ao longo do tempo (Queimar, Amaldiçoar, Escudo, EsquivaChance, Partitura)
         for (const effectName in card.effectsApplied) {
-            const effect = card.effectsApplied[effectName];
-            console.log(`%c[DEBUG EFFECTS] Processando efeito: ${effectName}, Turnos: ${effect.turns} para ${card.name}`, 'color: #DA70D6;'); // Orquídea
-            
-            // --- LÓGICA PARA EFEITOS TEMPORÁRIOS (turns > 0) ---
-            if (effect.turns > 0) { // Se tem turnos restantes (e não é permanente -1)
-                if (effectName === 'Queimar' || effectName === 'Amaldiçoar') {
-                    this.dealDamage(card, effect.value); 
-                    this.addLog(`${card.name} sofreu ${effect.value} de dano de ${effectName}. Vida: ${card.currentLife}`);
-                }
-                effect.turns--; // Decrementa os turnos
-            }
+    const effect = card.effectsApplied[effectName];
+    console.log(`%c[DEBUG EFFECTS] Processando efeito: ${effectName}, Turnos: ${effect.turns} para ${card.name}`, 'color: #DA70D6;');
 
-            // --- LÓGICA PARA REMOVER EFEITOS EXPIRADOS (turns === 0) ---
-            // Não remove efeitos permanentes (turns === -1)
-            if (effect.turns === 0) { // AGORA SÓ REMOVE SE for EXATAMENTE 0
-                if (effectName === 'Amaldiçoar' || effectName === 'Enraizar' || effectName === 'Atordoar') {
-                    card.canAttack = true; 
-                }
-                // CHAMA reRenderCard PARA REMOVER VISUALMENTE O EFEITO EXPIRADO
-                if (effectName === 'Escudo' || effectName === 'Partitura' || effectName === 'EsquivaChance' || effectName === 'Queimar' || effectName === 'Amaldiçoar') {
-                    this.reRenderCard(card); 
-                }
-                delete card.effectsApplied[effectName];
-                this.addLog(`${card.name} não está mais sob efeito de ${effectName}.`);
-            }
+    // Esta parte continua a mesma: Queimar e Amaldiçoar causam dano por turno e decrementam turnos
+    if (effect.turns > 0) {
+        if (effectName === 'Queimar' || effectName === 'Amaldiçoar') {
+            this.dealDamage(card, effect.value);
+            this.addLog(`${card.name} sofreu ${effect.value} de dano de ${effectName}. Vida: ${card.currentLife}`);
         }
+        effect.turns--; // Decrementa os turnos para efeitos TEMPORÁRIOS
+    }
+
+    // AGORA, SÓ REMOVA O EFEITO SE ELE NÃO FOR 'Escudo' OU 'Partitura' E SE SEUS TURNOS CHEGARAM A ZERO
+    if (effect.turns === 0 && effectName !== 'Escudo' && effectName !== 'Partitura') {
+        if (effectName === 'Amaldiçoar' || effectName === 'Enraizar' || effectName === 'Atordoar') {
+            card.canAttack = true;
+        }
+        this.reRenderCard(card); // Força a renderização para remover o visual do efeito expirado
+        delete card.effectsApplied[effectName];
+        this.addLog(`${card.name} não está mais sob efeito de ${effectName}.`);
+    }
+}
             
         // Remove o bônus de ataque de Hyakkimaru se sua fonte (Hyakkimaru) for derrotada
         if (card.tempAttackBonusSource) {
@@ -794,45 +805,53 @@ this.transformationSound.volume = 0.6;
     }
 },
 
-  performAttack: async function(attacker, target, isSecondHit = false) {
-    this.isProcessingAttack = true;
-    if (!isSecondHit) {
-        this.attackSound.play();
-        this.currentDamageDealt = 0; 
-        this.attackCountForPlayer[attacker.owner]++; 
+ performAttack: async function(attacker, target, isSecondHit = false) {
+    // 1. Início do Processo de Ataque
+    this.isProcessingAttack = true; // Marca que um ataque está em andamento
+    if (!isSecondHit) { // Se não é o segundo hit do Toji (para não tocar som ou contar ataque duas vezes)
+        this.attackSound.play(); // Toca o som de ataque
+        this.currentDamageDealt = 0; // Reseta o dano causado para este ataque
+        this.attackCountForPlayer[attacker.owner]++; // Incrementa contador de ataque do jogador (para Blastoise)
     }
 
+    // 2. Animação do Atacante
     const attackerElement = document.getElementById(`card-${attacker.id}`);
     if (attackerElement) {
-        attackerElement.style.animation = 'attack-move 0.3s ease-out forwards';
-        await sleep(300); 
+        attackerElement.style.animation = 'attack-move 0.3s ease-out forwards'; // Inicia animação de ataque
+        await this.sleep(300); // Espera a animação um pouco
     }
 
+    // 3. Cálculo do Dano Base
+    // Dano aleatório dentro do range de ataque do atacante, considerando bônus temporários
     let rawDamage = Math.floor(Math.random() * (attacker.attackMax + attacker.tempAttackBonus - (attacker.attackMin + attacker.tempAttackBonus) + 1)) + (attacker.attackMin + attacker.tempAttackBonus);
-    let finalDamage = rawDamage;
-    let ignoredShield = 0; 
+    let finalDamage = rawDamage; // Dano que será ajustado pelas habilidades
 
+    // 4. Habilidades Específicas do ATACANTE que MODIFICAM O DANO OU ATAQUE
     let gojoDoubleDamage = false;
-    if (attacker.id === 'light3' && attacker.specialEffect) {
+    if (attacker.id === 'light3' && attacker.specialEffect) { // Gojo (Luz): 20% de chance de dobrar o dano
         const result = await attacker.specialEffect(this, attacker, target);
-        if (result === 2) { 
+        if (result === 2) {
             finalDamage *= 2;
-            gojoDoubleDamage = true;
+            gojoDoubleDamage = true; // Flag para ignorar multiplicador elemental depois
         }
     }
 
     let tobiramaBonus = 0;
-    if (attacker.id === 'water3' && attacker.specialEffect) {
+    if (attacker.id === 'water3' && attacker.specialEffect) { // Tobirama (Água): Dano extra contra Fogo
         tobiramaBonus = await attacker.specialEffect(this, attacker, target);
         finalDamage += tobiramaBonus;
     }
 
-    if (attacker.id === 'earth4' && attacker.specialEffect) { // Might Guy
-        ignoredShield = await attacker.specialEffect(this, attacker, target);
+    // Might Guy (Terra): Informa quanto de escudo ele ignora. A lógica de ignorar é em dealDamage.
+    let ignoredShieldAmount = 0;
+    if (attacker.id === 'earth4' && attacker.specialEffect) {
+        ignoredShieldAmount = await attacker.specialEffect(this, attacker, target);
     }
+    // Kakashi (Luz): Ignora escudo e esquiva. Lógica de ignorar é em dealDamage.
 
+    // 5. Multiplicador Elemental (se Gojo não dobrou o dano)
     let elementalMultiplier = 1;
-    if (!gojoDoubleDamage) { 
+    if (!gojoDoubleDamage) { // Se Gojo não dobrou, aplicamos a vantagem elemental
         const attackerElement = attacker.element;
         const targetElement = target.element;
 
@@ -840,148 +859,111 @@ this.transformationSound.volume = 0.6;
             'Fogo': 'Ar', 'Ar': 'Terra', 'Terra': 'Agua', 'Agua': 'Fogo'
         };
         const darkLightAdvantage = {
-            'Dark': 'Luz', 'Luz': 'Dark' 
+            'Dark': 'Luz', 'Luz': 'Dark'
         };
 
         if (elementalAdvantages[attackerElement] === targetElement) {
-            elementalMultiplier = 1.5; 
-            this.addLog(`<span class="math-inline">\{attacker\.name\} \(</span>{attackerElement}) tem vantagem elemental contra <span class="math-inline">\{target\.name\} \(</span>{targetElement})!`);
+            elementalMultiplier = 1.5;
+            this.addLog(`${attacker.name} (${attackerElement}) tem vantagem elemental contra ${target.name} (${targetElement})!`);
         } else if (elementalAdvantages[targetElement] === attackerElement) {
-            elementalMultiplier = 1 / 1.5; 
-            this.addLog(`<span class="math-inline">\{attacker\.name\} \(</span>{attackerElement}) tem desvantagem elemental contra <span class="math-inline">\{target\.name\} \(</span>{targetElement})!`);
+            elementalMultiplier = 1 / 1.5;
+            this.addLog(`${attacker.name} (${attackerElement}) tem desvantagem elemental contra ${target.name} (${targetElement})!`);
         } else if (darkLightAdvantage[attackerElement] === targetElement) {
-            elementalMultiplier = 1.5; 
-            this.addLog(`<span class="math-inline">\{attacker\.name\} \(</span>{attackerElement}) tem vantagem ofensiva contra <span class="math-inline">\{target\.name\} \(</span>{targetElement})!`);
+            elementalMultiplier = 1.5;
+            this.addLog(`${attacker.name} (${attackerElement}) tem vantagem ofensiva contra ${target.name} (${targetElement})!`);
         } else if (darkLightAdvantage[targetElement] === attackerElement) {
-            elementalMultiplier = 1 / 1.5; 
-            this.addLog(`<span class="math-inline">\{attacker\.name\} \(</span>{attackerElement}) tem desvantagem ofensiva contra <span class="math-inline">\{target\.name\} \(</span>{targetElement})!`);
+            elementalMultiplier = 1 / 1.5;
+            this.addLog(`${attacker.name} (${attackerElement}) tem desvantagem ofensiva contra ${target.name} (${targetElement})!`);
         }
     }
     finalDamage = Math.floor(finalDamage * elementalMultiplier);
 
-
-    // Aplica dano extra da Partitura se o alvo estiver marcado
+    // 6. Dano Extra da Partitura (Efeito no ALVO, mas calculado aqui para o total)
     if (target.effectsApplied['Partitura']) {
         const extraDamage = target.effectsApplied['Partitura'].value;
         finalDamage += extraDamage;
-        this.addLog(`${target.name} sofreu ${extraDamage} de dano extra devido \u00e0 Partitura!`);
+        this.addLog(`${target.name} sofreu ${extraDamage} de dano extra devido à Partitura!`);
         console.log(`%c[DEBUG UZUI - PARTITURA] ${target.name} recebeu ${extraDamage} de dano extra da Partitura.`, 'color: #00BFFF;');
     }
+    
+    this.currentDamageDealt = finalDamage; // Armazena o dano calculado FINAL (antes da defesa do alvo)
 
+    // 7. Aplicar Dano ao Alvo (Função dealDamage lida com Escudo, Esquiva, Redução do alvo)
+    // Passamos o atacante para dealDamage para que habilidades como Kakashi possam ignorar defesas.
+    await this.dealDamage(target, finalDamage, attacker);
 
-    // >>> LÓGICA DE ESCUDO / REDUÇÃO DE DANO (COM MAIS LOGS) <<<
-    console.log(`%c[DEBUG SHIELD LOGIC] Alvo: ${target.name}. Dano inicial: ${finalDamage}. Efeitos:`, 'color: #1E90FF;', target.effectsApplied); // Azul Forte
-
-    let obitoDodged = false;
-    if (target.id === 'wind1' && target.specialEffect) { // Obito
-        obitoDodged = await target.specialEffect(this, target, target); 
-        if (obitoDodged) {
-            finalDamage = 0; 
-            this.addLog(`${target.name} (Vento) esquivou completamente do ataque!`);
-            console.log(`%c[DEBUG SHIELD LOGIC] Obito esquivou. Dano final 0.`, 'color: #1E90FF;');
+    // 8. Efeitos Pós-Dano no ALVO (reações do ALVO ao receber dano)
+    // Estes efeitos só devem ocorrer se não for um "segundo hit" de habilidades (como Toji).
+    if (!isSecondHit) {
+        if (target.id === 'water1' && target.specialEffect) { // Blastoise (Água)
+            await target.specialEffect(this, target, target);
+        }
+        if (target.id === 'water2' && target.specialEffect) { // Kisame (Água)
+            await target.specialEffect(this, target, target);
+        }
+        if (target.id === 'earth3' && target.specialEffect) { // Edward Elric (Terra)
+            await target.specialEffect(this, target, target);
+        }
+        if (target.id === 'dark2' && target.specialEffect) { // Zeref (Dark)
+            await target.specialEffect(this, target, target);
+        }
+        if (target.id === 'wind2' && target.specialEffect) { // Aang (Ar)
+            await target.specialEffect(this, target, target);
         }
     }
-    if (target.effectsApplied['EsquivaChance'] && Math.random() < target.effectsApplied['EsquivaChance'].value && attacker.id !== 'light4') { // Akali (light4 = Kakashi)
-        this.addLog(`${target.name} esquivou do ataque devido ao efeito de Akali!`);
-        finalDamage = 0;
-        delete target.effectsApplied['EsquivaChance']; 
-        console.log(`%c[DEBUG SHIELD LOGIC] Esquiva de Akali ativada. Dano final 0.`, 'color: #1E90FF;');
-    }
+    
 
-    let gaaraReduction = 0;
-    if (target.id === 'earth1' && target.specialEffect) { // Gaara
-        gaaraReduction = await target.specialEffect(this, target, target);
-        finalDamage = Math.max(0, finalDamage + gaaraReduction); 
-        console.log(`%c[DEBUG SHIELD LOGIC] Gaara reduziu dano. Novo dano: ${finalDamage}.`, 'color: #1E90FF;');
-    }
-
-    let hashiramaReduction = 0;
-    if (target.id === 'light1' && target.specialEffect) { // Hashirama
-        hashiramaReduction = await target.specialEffect(this, target, target);
-        finalDamage = Math.max(0, finalDamage - hashiramaReduction); // Hashirama reduz o dano em 10, nao aumenta
-        console.log(`%c[DEBUG SHIELD LOGIC] Hashirama reduziu dano. Novo dano: ${finalDamage}.`, 'color: #1E90FF;');
-    }
-
-
-    // LÓGICA DO ESCUDO (Shield)
-    if (target.effectsApplied['Escudo'] && finalDamage > 0 && attacker.id !== 'light4') { // light4 \u00e9 Kakashi
-        const shieldAmount = target.effectsApplied['Escudo'].value;
-        const damageBeforeShield = finalDamage; // Dano antes do escudo
-        const damageToShield = Math.min(finalDamage, shieldAmount - ignoredShield); // ignoredShield = Might Guy/Kakashi
-
-        finalDamage = Math.max(0, finalDamage - (shieldAmount - ignoredShield)); // Dano real ap\u00f3s o escudo
-        target.effectsApplied['Escudo'].value = Math.max(0, shieldAmount - damageToShield); // Atualiza o escudo restante
-
-        this.addLog(`${target.name} absorveu ${damageToShield} de dano com seu Escudo. Escudo restante: ${target.effectsApplied['Escudo'].value}`);
-        console.log(`%c[DEBUG SHIELD LOGIC] Escudo: Absorveu ${damageToShield} de dano. Escudo restante: ${target.effectsApplied['Escudo'].value}. Dano real: ${finalDamage}.`, 'color: #1E90FF;');
-
-        if (target.effectsApplied['Escudo'].value <= 0) {
-            delete target.effectsApplied['Escudo']; 
-            this.reRenderCard(target); // For\u00e7a a renderiza\u00e7\u00e3o para remover o visual do escudo
-            this.addLog(`Escudo de ${target.name} foi quebrado!`);
-            console.log(`%c[DEBUG SHIELD LOGIC] Escudo de ${target.name} foi quebrado.`, 'color: #1E90FF;');
+    // 9. Efeitos Pós-Ataque do ATACANTE (habilidades que ativam APÓS o ataque)
+    // Estes efeitos só devem ocorrer se não for um "segundo hit" de habilidades (como Toji).
+    if (!isSecondHit) {
+        if (attacker.id === 'fire4' && attacker.specialEffect) { // Roy Mustang (Fogo)
+            await attacker.specialEffect(this, attacker, target);
         }
-    }
-    console.log(`%c[DEBUG SHIELD LOGIC] Dano FINAL a ${target.name}: ${finalDamage}.`, 'color: #1E90FF; font-weight: bold;');
-    // >>> FIM DA LÓGICA DE ESCUDO / REDUÇÃO DE DANOS <<<
+        if (attacker.id === 'fire5' && attacker.specialEffect) { // Rengoku (Fogo)
+            await attacker.specialEffect(this, attacker, target);
+        }
+        if (attacker.id === 'wind4' && attacker.specialEffect) { // Minato (Ar)
+            await attacker.specialEffect(this, attacker, target);
+        }
+        if (attacker.id === 'wind3' && attacker.specialEffect && !this.isTojiSecondHit) { // Toji (Ar): Ataque Duplo
+            this.isTojiSecondHit = true; // Marca para o segundo hit
+            await this.performAttack(attacker, target, true); // Chama a si mesmo para o segundo hit
+            this.isTojiSecondHit = false; // Reseta a flag após o segundo hit
+        }
+        if (attacker.id === 'wind6' && attacker.specialEffect) { // Zoro (Ar): Aumenta ataque a cada golpe
+            await attacker.specialEffect(this, attacker, target);
+        }
+        if (attacker.id === 'light7' && attacker.specialEffect) { // Goku (Luz): Kamehameha (Dano em Área)
+            // O specialEffect de Goku já lida com a aplicação de dano a múltiplos alvos.
+            await attacker.specialEffect(this, attacker, target);
+        }
 
+        // --- ATIVAÇÃO DE ESCANOR E SUKUNA (ATAQUE CONJUNTO) ---
+        // Encontra aliados do atacante que podem atacar junto (Escanor ou Sukuna)
+        const potentialJointAttackers = this.getPlayersCards(attacker.owner).filter(c => 
+            c.currentLife > 0 &&         // A carta está viva
+            c.id !== attacker.id &&      // Não é o atacante principal que acabou de agir
+            !c.hasAttackedThisTurn &&    // Não atacou junto ainda neste turno
+            (c.id === 'fire1' || c.id === 'dark7') // É Escanor ou Sukuna
+        );
 
-    const targetElement = document.getElementById(`card-${target.id}`);
-    if (targetElement && finalDamage > 0) {
-        targetElement.style.animation = 'target-hit 0.6s ease-out';
-        await sleep(600); 
-        targetElement.style.animation = ''; 
-    }
-
-    this.currentDamageDealt = finalDamage; 
-
-    // APLICAR DANO FINAL AO ALVO (se n\u00e3o for AoE como Goku)
-    this.dealDamage(target, finalDamage); // Esta chamada agora \u00e9 para o dano individual
-
-    // Outros efeitos p\u00f3s-dano ao alvo
-    if (target.id === 'earth3' && target.specialEffect && !isSecondHit) { // Edward Elric
-        await target.specialEffect(this, target, target);
-    }
-
-    if (target.id === 'dark2' && target.specialEffect && !isSecondHit) { // Zeref
-        await target.specialEffect(this, target, target);
-    }
-
-    if (target.id === 'wind2' && target.specialEffect && !isSecondHit) { // Aang
-        await target.specialEffect(this, target, target);
-    }
-
-    if (target.id === 'water1' && target.specialEffect && !isSecondHit) { // Blastoise
-        await target.specialEffect(this, target, target);
-    }
-
-    if (target.id === 'water2' && target.specialEffect && !isSecondHit) { // Kisame
-        await target.specialEffect(this, target, target);
-    }
-
-    // Efeitos p\u00f3s-ataque do ATACANTE
-    if (attacker.id === 'fire4' && attacker.specialEffect && !isSecondHit) { // Roy Mustang
-        await attacker.specialEffect(this, attacker, target);
-    }
-
-    if (attacker.id === 'fire5' && attacker.specialEffect && !isSecondHit) { // Rengoku
-        await attacker.specialEffect(this, attacker, target);
+        for (const jointAttacker of potentialJointAttackers) {
+            if (jointAttacker.specialEffect) {
+                // Chama o specialEffect da carta.
+                // O specialEffect de Escanor lida com sua chance (50%).
+                // O specialEffect de Sukuna SEMPRE ATIVA (já removemos o Math.random()).
+                const hasAttackedJointly = await jointAttacker.specialEffect(this, jointAttacker, target);
+                if (hasAttackedJointly) {
+                    jointAttacker.hasAttackedThisTurn = true; // Marca o atacante conjunto como tendo agido
+                }
+            }
+        }
+        // --- FIM DA ATIVAÇÃO DE ESCANOR E SUKUNA ---
     }
 
-    if (attacker.id === 'wind4' && attacker.specialEffect && !isSecondHit) { // Minato
-        await attacker.specialEffect(this, attacker, target);
-    }
-
-    if (attacker.id === 'wind3' && attacker.specialEffect && !isSecondHit) { // Toji
-        await attacker.specialEffect(this, attacker, target);
-    }
-    if (attacker.id === 'wind6' && attacker.specialEffect && !isSecondHit) { // ZORRO
-        await attacker.specialEffect(this, attacker, target);
-    }
-
-
-    if (attackerElement) { attackerElement.style.animation = ''; }
-    this.isProcessingAttack = false;
+    // 10. Finalização da Animação e Limpeza
+    if (attackerElement) { attackerElement.style.animation = ''; } // Remove a animação do atacante
+    this.isProcessingAttack = false; // Marca que o ataque terminou
 },
     performHeal: async function(healer, target) {
         this.isProcessingHeal = true;
@@ -1028,77 +1010,153 @@ this.transformationSound.volume = 0.6;
         this.isProcessingHeal = false;
     },
 
-dealDamage: async function(targetCard, amount) {
+dealDamage: async function(targetCard, amount, attacker = null) { // Adicione attacker como parametro opcional
     let damageToDeal = amount;
 
+    // Efeitos de defesa que REDUZEM ou ANULAM dano ANTES do escudo
+    let finalReduction = 0;
+
+    // 1. Obito (wind1) - 35% de chance de esquivar COMPLETAMENTE
+    if (targetCard.id === 'wind1' && targetCard.specialEffect) {
+        const obitoDodged = await targetCard.specialEffect(this, targetCard, targetCard);
+        if (obitoDodged) {
+            this.addLog(`${targetCard.name} (Vento) esquivou completamente do ataque!`);
+            damageToDeal = 0; // Zera o dano
+            this.reRenderCard(targetCard); // Garante que a UI reflita a esquiva
+            this.updateUI();
+            return; // Sai da função, pois não há dano a ser aplicado
+        }
+    }
+
+    // 2. EsquivaChance (Akali - wind5) - 50% de chance de esquivar
+    // E verifica se o atacante NÃO é Kakashi (light4)
+    if (targetCard.effectsApplied['EsquivaChance'] && attacker && attacker.id !== 'light4' && Math.random() < targetCard.effectsApplied['EsquivaChance'].value) {
+        this.addLog(`${targetCard.name} esquivou do ataque devido ao efeito de Akali!`);
+        damageToDeal = 0; // Zera o dano
+        delete targetCard.effectsApplied['EsquivaChance']; // Remove o efeito após uso
+        this.reRenderCard(targetCard);
+        this.updateUI();
+        return; // Sai da função
+    }
+
+    // 3. Gaara (earth1) - 50% de chance de reduzir 5 de dano
+    if (targetCard.id === 'earth1' && targetCard.specialEffect) {
+        const gaaraReduction = await targetCard.specialEffect(this, targetCard, targetCard);
+        damageToDeal = Math.max(0, damageToDeal + gaaraReduction); // A redução é um valor negativo (-5)
+        if (gaaraReduction < 0) { // Se houve redução de fato
+            this.addLog(`${targetCard.name} (Terra) reduziu ${Math.abs(gaaraReduction)} de dano recebido!`);
+        }
+    }
+
+    // 4. Hashirama (light1) - 50% de chance de reduzir 5 de dano
+    if (targetCard.id === 'light1' && targetCard.specialEffect) {
+        const hashiramaReduction = await targetCard.specialEffect(this, targetCard, targetCard);
+        damageToDeal = Math.max(0, damageToDeal + hashiramaReduction); // A redução é um valor negativo (-5)
+        if (hashiramaReduction < 0) { // Se houve redução de fato
+            this.addLog(`${targetCard.name} (Luz) reduziu ${Math.abs(hashiramaReduction)} de dano recebido!`);
+        }
+    }
+    
+    // --- LÓGICA DO ESCUDO ---
+    // Apenas se houver dano para aplicar e se o escudo existir e for maior que 0
+    // E se o atacante NÃO é Kakashi (light4)
+    if (damageToDeal > 0 && targetCard.effectsApplied['Escudo'] && targetCard.effectsApplied['Escudo'].value > 0 && (attacker === null || attacker.id !== 'light4')) {
+        const shieldValue = targetCard.effectsApplied['Escudo'].value;
+        let effectiveShield = shieldValue;
+
+        // Might Guy (earth4) ignora escudo
+        if (attacker && attacker.id === 'earth4') { // Might Guy
+            const ignoredShield = 10; // Might Guy ignora 10 de escudo (valor fixo)
+            effectiveShield = Math.max(0, shieldValue - ignoredShield); // Escudo efetivo após a ignorância de Might Guy
+            if (ignoredShield > 0) {
+                this.addLog(`${attacker.name} (Terra) ignorou ${ignoredShield} de Escudo de ${targetCard.name}.`);
+            }
+        }
+        
+        // Se o escudo efetivo ainda existir
+        if (effectiveShield > 0) {
+            const damageToShield = Math.min(damageToDeal, effectiveShield); // Quanto do dano será absorvido pelo escudo
+            targetCard.effectsApplied['Escudo'].value -= damageToShield; // Reduz o escudo
+            damageToDeal -= damageToShield; // Reduz o dano a ser aplicado na vida
+
+            this.addLog(`${targetCard.name} absorveu ${damageToShield} de dano com seu escudo. Escudo restante: ${targetCard.effectsApplied['Escudo'].value}.`);
+            console.log(`%c[DEBUG ESCUDO] Escudo absorveu ${damageToShield} de dano. Escudo restante: ${targetCard.effectsApplied['Escudo'].value}`, 'color: #00FFFF;');
+
+            // Se o escudo foi zerado ou ficou negativo, remova-o
+            if (targetCard.effectsApplied['Escudo'].value <= 0) {
+                delete targetCard.effectsApplied['Escudo'];
+                this.addLog(`O escudo de ${targetCard.name} foi quebrado!`);
+                console.log(`%c[DEBUG ESCUDO] Escudo de ${targetCard.name} quebrado.`, 'color: #FFD700;');
+            }
+            this.reRenderCard(targetCard); // Atualiza o visual do escudo
+        }
+    }
+
+    // Aplica o dano restante na vida da carta
     targetCard.currentLife -= damageToDeal;
     if (targetCard.currentLife < 0) targetCard.currentLife = 0;
 
-    this.addLog(`${targetCard.name} recebeu ${damageToDeal} de dano. Vida restante: ${targetCard.currentLife}`);
+    this.addLog(`${targetCard.name} recebeu ${damageToDeal} de dano na vida. Vida restante: ${targetCard.currentLife}`);
+    console.log(`%c[DEBUG DEALDAMAGE] Vida final de ${targetCard.name}: ${targetCard.currentLife}`, 'color: #FF00FF;');
 
-    // Efeito de Luffy: aumenta ataque se receber dano e não for derrotado
-    if (targetCard.id === 'earth6' && targetCard.specialEffect && targetCard.currentLife > 0) { // S\u00f3 ativa se n\u00e3o for derrotado
-        await targetCard.specialEffect(this, targetCard, null); // Chama o specialEffect de Luffy
+    // Efeito de Luffy: aumenta ataque se receber dano E o dano foi para a vida E ele não foi derrotado
+    if (targetCard.id === 'earth6' && targetCard.specialEffect && targetCard.currentLife > 0 && damageToDeal > 0) {
+        await targetCard.specialEffect(this, targetCard, null);
     }
 
+    // Checagem de derrota (esta parte é crucial e já estava bem feita)
     if (targetCard.currentLife <= 0) {
         this.addLog(`${targetCard.name} foi derrotado!`);
-        this.isCardDefeated = true; // Marca como derrotada
+        this.isCardDefeated = true;
 
-        // Removendo a carta do array 'team' antes de tentar a invocação/lixeira
         const playerTeam = this.players[targetCard.owner].team;
         const indexInTeam = playerTeam.findIndex(c => c.id === targetCard.id);
         if (indexInTeam > -1) {
-            playerTeam.splice(indexInTeam, 1);
+            playerTeam.splice(indexInTeam, 1); // Remove a carta derrotada do time
         }
-        
-        let summoned = false; // Flag para controlar se algo foi invocado
 
-        // Lógica de prioridade para invocações: Yugi (Mago Negro) primeiro, depois Sung Jin-woo (Igris)
-        const yugiInTeam = playerTeam.some(c => c.id === 'light6' || c.id === 'yami_yugi'); 
+        let summoned = false;
+
+        // Lógica de invocação (Yugi primeiro, depois Sung Jin-woo)
+        const yugiInTeam = this.players[targetCard.owner].team.some(c => (c.id === 'light6' || c.id === 'yami_yugi') && c.currentLife > 0);
         if (yugiInTeam) {
-            console.log(`%c[DEBUG DEALDAMAGE - INVOCAR] Yugi est\u00e1 presente. Tentando invocar Mago Negro.`, 'color: #008080;');
-            summoned = await this.summonMagoNegro(targetCard); // Invoca Mago Negro
+            summoned = await this.summonMagoNegro(targetCard);
         }
 
-        if (!summoned) { // Se Mago Negro n\u00e3o foi invocado, tenta Igris
-            const sungJinWooInTeam = playerTeam.some(c => c.id === 'dark5');
+        if (!summoned) {
+            const sungJinWooInTeam = this.players[targetCard.owner].team.some(c => c.id === 'dark5' && c.currentLife > 0);
             if (sungJinWooInTeam) {
-                console.log(`%c[DEBUG DEALDAMAGE - INVOCAR] Sung Jin-woo est\u00e1 presente. Tentando invocar Igris.`, 'color: #008080;');
-                summoned = await this.summonIgris(targetCard); // Invoca Igris
-            } else {
-                console.log(`%c[DEBUG DEALDAMAGE - INVOCAR] Nenhum feiticeiro presente para invocar.`, 'color: orange;');
+                summoned = await this.summonIgris(targetCard);
             }
         }
 
-        // Se nenhuma sombra foi invocada, a carta vai para a lixeira oficial
+        // Se nada foi invocado, a carta vai para a lixeira oficial e mostra overlay "DERROTADO"
         if (!summoned) {
-            this.playerDefeatedCard(targetCard); 
-            // Renderiza o overlay "DERROTADO"
+            this.playerDefeatedCard(targetCard);
             const slotOfDefeatedCard = this.getBattlefieldSlot(targetCard.owner, targetCard.position);
             if (slotOfDefeatedCard) {
-                slotOfDefeatedCard.innerHTML = ''; 
+                slotOfDefeatedCard.innerHTML = '';
                 const defeatedOverlay = document.createElement('div');
-                defeatedOverlay.classList.add('absolute', 'inset-0', 'bg-red-900', 'bg-opacity-70', 'flex', 'items-center', 'justify-content-center', 'font-bold', 'text-xl', 'rounded-lg', 'text-white');
+                defeatedOverlay.classList.add('absolute', 'inset-0', 'bg-red-900', 'bg-opacity-70', 'flex', 'items-center', 'justify-center', 'font-bold', 'text-xl', 'rounded-lg', 'text-white');
                 defeatedOverlay.textContent = 'DERROTADO';
                 slotOfDefeatedCard.appendChild(defeatedOverlay);
             }
         }
-        // Se invocado, as fun\u00e7\u00f5es summonIgris ou summonMagoNegro j\u00e1 cuidam da renderiza\u00e7\u00e3o
 
-        // Outros efeitos de morte (Deidara, Madara)
-        if (targetCard.id === 'fire3' && targetCard.specialEffect) {
-            targetCard.specialEffect(this, targetCard, targetCard);
+        // Efeitos de morte (Deidara, Madara)
+        if (targetCard.id === 'fire3' && targetCard.specialEffect) { // Deidara
+            await targetCard.specialEffect(this, targetCard, targetCard); // targetCard aqui é a carta que morreu (Deidara)
         }
-        const attacker = this.selectedAttacker;
-        if (attacker && attacker.id === 'dark3' && attacker.specialEffect) {
-            attacker.specialEffect(this, attacker, targetCard);
+        if (attacker && attacker.id === 'dark3' && attacker.specialEffect) { // Madara
+            await attacker.specialEffect(this, attacker, targetCard); // targetCard aqui é a carta que Madara derrotou
         }
-        
-        this.isCardDefeated = false; 
+
+        this.isCardDefeated = false;
     } else {
-        this.updateUI(); // Se a carta não foi derrotada, apenas atualiza a UI
+        // Se a carta não foi derrotada, garantimos que ela seja renderizada para mostrar a nova vida ou escudo
+        this.reRenderCard(targetCard);
     }
+    this.updateUI(); // Atualiza a UI no final, para garantir que tudo esteja certo
 },
 
     healCard: function(targetCard, amount) {
@@ -1107,15 +1165,21 @@ dealDamage: async function(targetCard, amount) {
     },
 
     applyEffect: function(card, effectName, turns, value) {
-        card.effectsApplied[effectName] = { turns: turns, value: value };
-        if (effectName === 'Amaldiçoar' || effectName === 'Enraizar' || effectName === 'Atordoar') {
-            card.canAttack = false;
-        }
-        // NOVA LÓGICA: CHAMA reRenderCard para atualizar a carta
-        console.log(`%c[DEBUG EFFECTS] Efeito '${effectName}' aplicado a ${card.name}. Turnos: ${turns}, Valor: ${value}. Estado atual:`, 'color: #4682B4;', card.effectsApplied); // Azul A\u00e7o
-        this.reRenderCard(card); 
-        this.updateUI(); 
-    },
+    let finalTurns = turns;
+    // Se o efeito é 'Escudo' ou 'Partitura', marcamos como -1 (permanente)
+    // assim ele não será removido automaticamente por turnos.
+    if (effectName === 'Escudo' || effectName === 'Partitura') {
+        finalTurns = -1; // -1 significa "dura para sempre"
+    }
+
+    card.effectsApplied[effectName] = { turns: finalTurns, value: value }; // Usamos finalTurns aqui
+    if (effectName === 'Amaldiçoar' || effectName === 'Enraizar' || effectName === 'Atordoar') {
+        card.canAttack = false;
+    }
+    console.log(`%c[DEBUG EFFECTS] Efeito '${effectName}' aplicado a ${card.name}. Turnos: ${finalTurns}, Valor: ${value}. Estado atual:`, 'color: #4682B4;', card.effectsApplied);
+    this.reRenderCard(card);
+    this.updateUI();
+},
 
     addLog: function(message) {
         const logEntry = document.createElement('p');

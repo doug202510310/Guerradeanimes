@@ -85,7 +85,7 @@ export class Card {
         <div class="card-hp-fill" style="width: ${(this.currentLife / this.maxLife) * 100}%"></div>
     </div>
     
-    ${this.effectsApplied['Escudo'] ? `<div class="shield-value-overlay">🛡️ ${this.effectsApplied['Escudo'].value}</div>` : ''}
+    ${this.effectsApplied['Escudo'] && this.effectsApplied['Escudo'].value > 0 ? `<div class="shield-value-overlay">🛡️ ${this.effectsApplied['Escudo'].value}</div>` : ''}
 
     <div class="negative-effects-container">
         ${this.effectsApplied['Partitura'] ? `<div class="debuff-icon partitura-icon">🎶 ${this.effectsApplied['Partitura'].value}</div>` : ''}
@@ -189,13 +189,19 @@ export const allCards = [
 
     // Fogo
     new Card('fire1', 'Escanor', 'Tank', [3, 5], 42, 'Fogo', 'Fogo: Tem 50% de chance de atacar junto de outra criatura atacante.', async (game, self, target) => {
-        if (game.isProcessingAttack && self.id === game.selectedAttacker.id && Math.random() < 0.50) {
-            game.addLog(`${self.name} (Fogo) ataca junto!`);
-            await game.performAttack(self, target, true); 
-            return true;
+    if (game.isProcessingAttack && self.id === game.selectedAttacker.id && Math.random() < 0.50) {
+        // Tocar o som do Escanor
+        if (game.escanorSound) { // <-- Verifique se game.escanorSound existe
+            game.escanorSound.play();
+        } else {
+            console.warn("Som do Escanor não configurado.");
         }
-        return false;
-    }),
+        game.addLog(`${self.name} (Fogo) ataca junto!`);
+        await game.performAttack(self, target, true);
+        return true;
+    }
+    return false;
+}),
     new Card('fire2', 'Endeavor', 'Tank', [2, 4], 46, 'Fogo', 'Fogo: Chance de 20% de queimar o alvo inimigo que atacou, em 3 de dano, independente se o ataque do inimigo for nele ou não.', async (game, self, target) => {
         if (game.isProcessingAttack && self.id === target.id && Math.random() < 0.20) {
             const attacker = game.selectedAttacker;
@@ -267,7 +273,7 @@ export const allCards = [
             
             if (backRowAllies.length > 0) {
                 const targetAlly = backRowAllies[Math.floor(Math.random() * backRowAllies.length)];
-                game.applyEffect(targetAlly, 'Escudo', 1, 5); 
+                game.applyEffect(targetAlly, 'Escudo', -1, 5); 
                 self.hasUsedSpecialAbilityOnce = true; 
                 game.addLog(`${self.name} (Terra) concedeu 5 de Escudo a ${targetAlly.name}.`);
                 game.updateUI();
@@ -494,6 +500,40 @@ new Card('dark6', 'Merlin [Dark]', 'Healer', [7, 9], 30, 'Dark', 'Dark: Para cur
     }
     return false;
 }, 'img/dark6.png'),
+ new Card('dark7', 'Sukuna', 'Damage', [8, 10], 22, 'Dark', 'Dark: Ataca junto de outro aliado. Quando ativado, Sukuna faz um som.', async (game, self, target) => {
+        // Este specialEffect será chamado APÓS a carta principal ter atacado
+        // E só se a condição de "atacar junto" for cumprida
+        console.log(`%c[DEBUG SUKUNA] Habilidade de Sukuna (Ataque Conjunto) verificada. Atacante: %c${self.name}%c.`, 'color: #8B0000;', 'color: yellow;', 'color: #8B0000;'); // Marrom Escuro para Dark
+
+        // Checa se quem está chamando o specialEffect é o Sukuna e se ele não atacou ainda neste turno como parte da habilidade principal
+        // O "game.isProcessingAttack" deve ser 'true' quando a habilidade primária está acontecendo.
+        // É importante que o specialEffect de Sukuna não seja chamado a cada ataque, mas sim
+        // quando a CARTA PRINCIPAL ataca e Sukuna é o "segundo" atacante.
+        // A lógica de ativação real será no game.js (performAttack)
+        if (game.isProcessingAttack && game.selectedAttacker && game.selectedAttacker.owner === self.owner) {
+            // Garante que Sukuna não está tentando atacar consigo mesmo como o 'selectedAttacker' principal
+            // E que ele ainda não atacou neste turno via sua habilidade
+            if (game.selectedAttacker.id !== self.id && !self.hasAttackedThisTurn) {
+                 // Verifica se há outro aliado vivo que não seja o próprio Sukuna e não seja o alvo do ataque
+                const otherAllies = game.getPlayersCards(self.owner).filter(c => c.currentLife > 0 && c.id !== self.id && c.id !== target.id);
+                if (otherAllies.length > 0) {
+                    // Tocar o som de Sukuna
+                    if (game.sukunaSound) {
+                        game.sukunaSound.play();
+                    } else {
+                        console.warn("Som do Sukuna não configurado.");
+                    }
+                    game.addLog(`${self.name} (Dark) ataca junto com ${game.selectedAttacker.name}!`);
+                    // Realiza o ataque de Sukuna no mesmo alvo
+                    await game.performAttack(self, target, true); // Passa 'true' para isSecondHit para evitar loops
+                    self.hasAttackedThisTurn = true; // Marca Sukuna como tendo agido neste turno
+                    game.updateUI();
+                    return true;
+                }
+            }
+        }
+        return false;
+    }, 'img/dark7.png'), // Certifique-se de ter 'img/dark7.png'
 // js/card.js - dentro do specialEffect do Naruto ('light2')
 new Card('light1', 'Hashirama', 'Tank', [2, 4], 50, 'Luz', 'Luz: Quando Hashirama recebe dano, ele tem 50% de chance de reduzir esse dano em 5.', async (game, self, target) => {
     if (game.isProcessingAttack && self.id === target.id && Math.random() < 0.50) {
@@ -521,7 +561,7 @@ new Card('light2', 'Naruto', 'Tank', [4, 5], 52, 'Luz', 'Luz: No início do turn
         }
 
         for (const ally of backRowAllies) {
-            game.applyEffect(ally, 'Escudo', 1, 7); 
+            game.applyEffect(ally, 'Escudo', -1, 7); 
             game.addLog(`${self.name} (Luz) concedeu 7 de Escudo a ${ally.name}.`);
             console.log(`[CHECKPOINT 9] Escudo aplicado a: ${ally.name}`);
         }
@@ -541,13 +581,13 @@ new Card('light2', 'Naruto', 'Tank', [4, 5], 52, 'Luz', 'Luz: No início do turn
     new Card('light5', 'Julius Novachrono', 'Healer', [7, 9], 30, 'Luz', 'Luz: Uma vez por partida, Julius Novachrono pode escolher um aliado para remover todos os efeitos negativos (ex: Amaldiçoar, Queimar, Enraizar, Atordoar) dele e curá-lo em 10 HP.', async (game, self, target) => {
         if (game.currentPhase === 'battle' && game.currentPlayerId === self.owner && !self.hasUsedSpecialAbilityOnce) {
             if (target) {
-                let effectsRemoved = false;
-                const negativeEffects = ['Amaldiçoar', 'Queimar', 'Enraizar', 'Atordoar', 'EsquivaChance']; 
+                 let effectsRemoved = false;
+                const negativeEffects = ['Amaldiçoar', 'Queimar', 'Enraizar', 'Atordoar', 'EsquivaChance', 'Partitura']; // <--- Adicione 'Partitura' aqui
                 for (const effectName of negativeEffects) {
                     if (target.effectsApplied[effectName]) {
                         delete target.effectsApplied[effectName];
                         if (effectName === 'Amaldiçoar' || effectName === 'Enraizar' || effectName === 'Atordoar') {
-                            target.canAttack = true; 
+                            target.canAttack = true;
                         }
                         effectsRemoved = true;
                     }
@@ -609,7 +649,7 @@ new Card('light2', 'Naruto', 'Tank', [4, 5], 52, 'Luz', 'Luz: No início do turn
     return false;
     
 }),
-new Card('light7', 'Goku', 'Damage', [8, 10], 22, 'Luz', 'Luz: Ataca todos os inimigos com seu Kamehameha.', async (game, self, target) => {
+new Card('light7', 'Goku', 'Damage', [6, 8], 22, 'Luz', 'Luz: Ataca todos os inimigos com seu Kamehameha.', async (game, self, target) => {
     // Este specialEffect será chamado APÓS a fase de cálculo de dano inicial em performAttack
     // Ele vai aplicar dano a TODOS os inimigos.
     console.log(`%c[DEBUG GOKU] Habilidade de Goku (Kamehameha) ativada!`, 'color: orange;', 'font-weight: bold;');
