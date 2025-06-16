@@ -188,6 +188,20 @@ export const allCards = [
     }
     return false;
 }, 'img/water6.png'), 
+new Card('water7', 'Ban', 'Tank', [2, 4], 40, 'Agua', 'Agua: Ele sofre dano no lugar de seus aliados. Quando sua vida chega a zero, ele regenera tudo uma vez na partida.', async (game, self, target) => {
+        // Este specialEffect será chamado para a habilidade de regeneração,
+        // quando a vida de Ban for zerada.
+        console.log(`%c[DEBUG BAN] Habilidade de Ban (Regeneração) verificada. Carta: %c${self.name}%c.`, 'color: #00BFFF;', 'color: yellow;', 'color: #00BFFF;'); // Azul Celeste para Água
+
+        if (self.currentLife <= 0 && !self.hasUsedSpecialAbilityOnce) {
+            game.addLog(`${self.name} foi derrotado, mas seu corpo imortal se regenera!`);
+            game.healCard(self, self.maxLife); // Cura ele de volta à vida máxima
+            self.hasUsedSpecialAbilityOnce = true; // Marca a habilidade como usada (uma vez por partida)
+            game.updateUI(); // Atualiza a UI para mostrar a regeneração
+            return true; // Indica que a regeneração ocorreu
+        }
+        return false; // Regeneração não ativada
+    }),
 
     // Fogo
     new Card('fire1', 'Escanor', 'Tank', [3, 5], 42, 'Fogo', 'Fogo: Tem 50% de chance de atacar junto de outra criatura atacante.', async (game, self, target) => {
@@ -333,8 +347,8 @@ export const allCards = [
             
             if (backRowAllies.length > 0) {
                 const targetAlly = backRowAllies[Math.floor(Math.random() * backRowAllies.length)];
-                game.applyEffect(targetAlly, 'Escudo', -1, 5); 
-                self.hasUsedSpecialAbilityOnce = true; 
+                game.applyEffect(targetAlly, 'Escudo', -1, 5);
+                self.hasUsedSpecialAbilityOnce = true;
                 game.addLog(`${self.name} (Terra) concedeu 5 de Escudo a ${targetAlly.name}.`);
                 game.updateUI();
                 return true;
@@ -554,7 +568,7 @@ new Card('wind7', 'Meimei', 'Healer', [12, 14], 22, 'Ar', 'Ar: Sempre que Meimei
             game.updateUI();
         }
     }),
-    new Card('dark4', 'Itachi', 'Damage', [13, 16], 24, 'Dark', 'Dark: Pode atacar diretamente qualquer criatura inimiga, ignorando a regra de Tanks.', null),
+    new Card('dark4', 'Itachi', 'Damage', [11, 13], 22, 'Dark', 'Dark: Pode atacar diretamente qualquer criatura inimiga, ignorando a regra de Tanks.', null),
     new Card('dark5', 'Sung Jin-woo', 'Feiticeiro', [5, 7], 33, 'Dark', 'Dark: Ao iniciar a batalha, concede seu ataque (5-7) ao Tank aliado mais ferido. Habilidade passiva: Ao ter um aliado derrotado, invoca a sombra Igris (ATK 10-13, VIDA 25) no lugar dele (uma vez por partida).', async (game, self, target) => {
     // ESTE specialEffect agora será APENAS para o Buff de Ataque no Tank (ativação: início da batalha)
     console.log(`%c[DEBUG SUNG JIN-WOO - EFFECT] Habilidade de Feiticeiro (BUFF TANK) verificada. Dono: %c${self.owner}%c, Vida: %c${self.currentLife}`, 'color: purple;', 'color: yellow;', 'color: purple;', 'color: yellow;');

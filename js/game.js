@@ -1036,160 +1036,183 @@ if (uzuiPlayer2 && uzuiPlayer2.specialEffect && !uzuiPlayer2.hasUsedSpecialAbili
 // Dentro do objeto 'game' no seu arquivo game.js
 
 dealDamage: async function(targetCard, amount, attacker = null) {
-    let damageToApply = amount; // Dano que o atacante causou inicialmente
+    let damageToApply = amount; // Dano bruto que o atacante tentou causar
+    let finalDamageReceived = 0; // Para registrar o dano REAL que a carta recebeu na vida
+    let shouldAnimateHit = true; // Flag para controlar a animação de "acerto"
 
-    console.log(`%c[DEBUG DEALDAMAGE START] ${targetCard.name} vai receber ${damageToApply} de dano. Atacante: ${attacker ? attacker.name : 'N/A'}.`, 'color: #ADD8E6;'); // Azul claro
+    console.log(`%c[DEBUG DEALDAMAGE START] --- Processando Dano ---`, 'background-color: #333; color: white; padding: 2px 5px;');
+    console.log(`%c[DEBUG DEALDAMAGE START] Alvo: ${targetCard.name} (HP: ${targetCard.currentLife}/${targetCard.maxLife}), Dano Inicial: ${damageToApply}, Atacante: ${attacker ? attacker.name : 'N/A'}.`, 'color: #ADD8E6;');
 
-    // 1. ANIMAÇÃO DE DANO RECEBIDO (inicial, antes da lógica de redução/defesa)
-    const targetElement = document.getElementById(`card-${targetCard.id}`);
-    if (targetElement && damageToApply > 0) {
-        targetElement.style.animation = 'target-hit 0.6s ease-out';
-        await this.sleep(600);
-        targetElement.style.animation = ''; // Remove a animação após o término
+    // 0. LÓGICA DE REDIRECIONAMENTO DE DANO PARA BAN (water7)
+    const banCard = this.players[targetCard.owner].team.find(c => c.id === 'water7' && c.currentLife > 0);
+
+    if (targetCard.id !== 'water7' && targetCard.owner === banCard?.owner && banCard && !banCard.hasUsedSpecialAbilityOnce) {
+        console.log(`%c[DEBUG BAN REDIRECT CHECK] Condi\u00e7\u00f5es para redirecionamento do Ban met. Redirecionando dano de ${targetCard.name} para ${banCard.name}.`, 'color: #9370DB;');
+
+        this.addLog(`${banCard.name} (Agua) se interpe e sofre o dano no lugar de ${targetCard.name}!`);
+        console.log(`%c[DEBUG BAN REDIRECT] Dano de ${damageToApply} redirecionado de ${targetCard.name} para ${banCard.name}.`, 'color: #00BFFF;');
+        
+        // Chamada recursiva para Ban
+        await this.dealDamage(banCard, damageToApply, attacker);
+
+        // Após Ban ter processado o dano, atualizamos a UI do alvo original
+        // e garantimos que ele não sofra a animação ou tenha seu HP alterado.
+        this.reRenderCard(targetCard); // Re-renderiza o alvo original (Uzui) para mostrar HP inalterado
+        this.updateUI();
+        console.log(`%c[DEBUG DEALDAMAGE END] Dano redirecionado. Finalizando esta execu\u00e7\u00e3o de dealDamage.`, 'color: #ADD8E6;');
+        return; // Sai da função atual, o dano foi tratado na recursão para Ban.
     }
 
-    // 2. EFEITOS DE DEFESA QUE REDUZEM OU ANULAM DANO ANTES DO ESCUDO
+    // A partir daqui, o 'targetCard' é a carta que REALMENTE vai receber o dano (pode ser o Ban, ou o alvo original se não houve redirecionamento)
+
+    // 1. ANIMAÇÃO DE DANO RECEBIDO (para o alvo atual, depois de checar redirecionamento)
+    const currentTargetElement = document.getElementById(`card-${targetCard.id}`); // <-- Variável renomeada
+    if (currentTargetElement && damageToApply > 0) { // <-- Usando a nova variável
+        currentTargetElement.style.animation = 'target-hit 0.6s ease-out';
+        await this.sleep(600);
+        currentTargetElement.style.animation = ''; // Remove a animação após o término
+    }
+
+    // 2. EFEITOS DE DEFESA DO ALVO QUE REDUZEM OU ANULAM DANO ANTES DO ESCUDO
     // Estes efeitos modificam diretamente 'damageToApply' ou podem retornar (se anularem completamente)
 
     // 2.1. Obito (wind1): 35% de chance de esquivar COMPLETAMENTE
     if (targetCard.id === 'wind1' && targetCard.specialEffect) {
-        // Obito retorna 'true' se esquivou, 'false' caso contrário
         const obitoDodged = await targetCard.specialEffect(this, targetCard, targetCard);
         if (obitoDodged) {
             this.addLog(`${targetCard.name} (Vento) esquivou completamente do ataque!`);
             damageToApply = 0; // Zera o dano
-            this.reRenderCard(targetCard); // Garante que a UI reflita a esquiva
+            shouldAnimateHit = false; // Não há dano, então talvez a animação não seja necessária
+            this.reRenderCard(targetCard);
             this.updateUI();
             console.log(`%c[DEBUG DEALDAMAGE END] Obito esquivou, dano zerado.`, 'color: #ADD8E6;');
-            return; // Sai da função, pois não há dano a ser aplicado
+            return;
         }
     }
 
     // 2.2. EsquivaChance (Akali - wind5): 50% de chance de esquivar
-    // E verifica se o atacante NÃO é Kakashi (light4)
     if (targetCard.effectsApplied['EsquivaChance'] && (attacker === null || attacker.id !== 'light4') && Math.random() < targetCard.effectsApplied['EsquivaChance'].value) {
         this.addLog(`${targetCard.name} esquivou do ataque devido ao efeito de Akali!`);
         damageToApply = 0; // Zera o dano
-        delete targetCard.effectsApplied['EsquivaChance']; // Remove o efeito após uso (é um efeito de 1 turno)
+        shouldAnimateHit = false;
+        delete targetCard.effectsApplied['EsquivaChance'];
         this.reRenderCard(targetCard);
         this.updateUI();
         console.log(`%c[DEBUG DEALDAMAGE END] Akali esquivou, dano zerado.`, 'color: #ADD8E6;');
-        return; // Sai da função
+        return;
     }
 
     // 2.3. Gaara (earth1): 50% de chance de reduzir 5 de dano
     if (targetCard.id === 'earth1' && targetCard.specialEffect) {
-        // O specialEffect de Gaara retorna um valor negativo para a redução de dano
         const gaaraReduction = await targetCard.specialEffect(this, targetCard, targetCard);
-        // Aplica a redução (se gaaraReduction for -5, reduz 5)
-        damageToApply = Math.max(0, damageToApply + gaaraReduction); 
-        if (gaaraReduction < 0) { // Se houve redução de fato
+        damageToApply = Math.max(0, damageToApply + gaaraReduction);
+        if (gaaraReduction < 0) {
             this.addLog(`${targetCard.name} (Terra) reduziu ${Math.abs(gaaraReduction)} de dano recebido!`);
         }
     }
 
     // 2.4. Hashirama (light1): 50% de chance de reduzir 5 de dano
     if (targetCard.id === 'light1' && targetCard.specialEffect) {
-        // O specialEffect de Hashirama retorna um valor negativo para a redução de dano
         const hashiramaReduction = await targetCard.specialEffect(this, targetCard, targetCard);
-        // Aplica a redução (se hashiramaReduction for -5, reduz 5)
         damageToApply = Math.max(0, damageToApply + hashiramaReduction);
-        if (hashiramaReduction < 0) { // Se houve redução de fato
+        if (hashiramaReduction < 0) {
             this.addLog(`${targetCard.name} (Luz) reduziu ${Math.abs(hashiramaReduction)} de dano recebido!`);
         }
     }
     
     // 3. LÓGICA DO ESCUDO
-    // Aplica o escudo apenas se ainda houver dano para aplicar E se o alvo tiver escudo ativo E o atacante NÃO for Kakashi
-    // Kakashi (light4) ignora escudo, então seu dano passa direto
     if (damageToApply > 0 && targetCard.effectsApplied['Escudo'] && targetCard.effectsApplied['Escudo'].value > 0 && (attacker === null || attacker.id !== 'light4')) {
         const shieldValue = targetCard.effectsApplied['Escudo'].value;
-        let effectiveShield = shieldValue; // Valor do escudo antes de considerar quem ataca
+        let effectiveShield = shieldValue;
 
-        // Might Guy (earth4) ignora parte do escudo
         if (attacker && attacker.id === 'earth4') {
-            const ignoredShield = 10; // Might Guy ignora 10 de escudo (valor fixo)
-            effectiveShield = Math.max(0, shieldValue - ignoredShield); // Escudo que sobrou para absorver o dano
-            if (ignoredShield > 0 && effectiveShield < shieldValue) { // Só loga se realmente ignorou algo
+            const ignoredShield = 10;
+            effectiveShield = Math.max(0, shieldValue - ignoredShield);
+            if (ignoredShield > 0 && effectiveShield < shieldValue) {
                 this.addLog(`${attacker.name} (Terra) ignorou ${ignoredShield} de Escudo de ${targetCard.name}. Escudo efetivo: ${effectiveShield}.`);
             }
         }
         
-        // Se o escudo efetivo ainda tiver valor para absorver dano
         if (effectiveShield > 0) {
-            const damageAbsorbedByShield = Math.min(damageToApply, effectiveShield); // Quanto do dano será absorvido pelo escudo
-            targetCard.effectsApplied['Escudo'].value -= damageAbsorbedByShield; // Reduz o valor do escudo
-            damageToApply -= damageAbsorbedByShield; // Reduz o dano que resta para ser aplicado na vida
+            const damageAbsorbedByShield = Math.min(damageToApply, effectiveShield);
+            targetCard.effectsApplied['Escudo'].value -= damageAbsorbedByShield;
+            damageToApply -= damageAbsorbedByShield;
 
             this.addLog(`${targetCard.name} absorveu ${damageAbsorbedByShield} de dano com seu escudo. Escudo restante: ${targetCard.effectsApplied['Escudo'].value}.`);
 
-            // Se o escudo foi zerado ou ficou negativo, remova-o completamente
             if (targetCard.effectsApplied['Escudo'].value <= 0) {
-                delete targetCard.effectsApplied['Escudo']; // Remove o objeto do efeito de escudo
+                delete targetCard.effectsApplied['Escudo'];
                 this.addLog(`O escudo de ${targetCard.name} foi quebrado!`);
             }
-            this.reRenderCard(targetCard); // Atualiza o visual da carta para mostrar o novo valor do escudo ou a remoção
+            this.reRenderCard(targetCard);
         }
     }
 
     // 4. APLICAÇÃO DO DANO RESTANTE NA VIDA
-    // Aplica o dano que sobrou (após esquivas, reduções e escudo) na vida da carta
+    // Registra a vida antes de aplicar o dano para calcular o dano real na vida
+    const lifeBeforeDamage = targetCard.currentLife; 
     targetCard.currentLife -= damageToApply;
-    if (targetCard.currentLife < 0) targetCard.currentLife = 0; // Garante que a vida não fique negativa
+    if (targetCard.currentLife < 0) targetCard.currentLife = 0;
 
-    this.addLog(`${targetCard.name} recebeu ${damageToApply} de dano na vida. Vida restante: ${targetCard.currentLife}`);
+    finalDamageReceived = lifeBeforeDamage - targetCard.currentLife; // Dano real que a vida sofreu
+
+    this.addLog(`${targetCard.name} recebeu ${finalDamageReceived} de dano na vida. Vida restante: ${targetCard.currentLife}`);
 
     // 5. EFEITOS PÓS-DANO (reações do ALVO ao receber dano na vida)
-    // Estes efeitos só ativam se a carta recebeu dano real na vida (damageToApply > 0)
+    // Estes efeitos só ativam se a carta recebeu dano real na vida (finalDamageReceived > 0)
     // e se ainda estiver viva.
 
     // 5.1. Luffy (earth6): Aumenta ataque se receber dano
-    if (targetCard.id === 'earth6' && targetCard.specialEffect && targetCard.currentLife > 0 && damageToApply > 0) {
+    if (targetCard.id === 'earth6' && targetCard.specialEffect && targetCard.currentLife > 0 && finalDamageReceived > 0) {
         await targetCard.specialEffect(this, targetCard, null);
     }
     // 5.2. Vegeta (fire7): Diminui ataque do inimigo que o atacar
-    // Ativa APÓS receber dano na vida, mas ANTES da checagem de derrota
-   if (targetCard.id === 'fire7' && targetCard.specialEffect && targetCard.currentLife > 0 && damageToApply > 0) {
-        await targetCard.specialEffect(this, targetCard, attacker); // <-- 'attacker' está sendo passado corretamente
+    if (targetCard.id === 'fire7' && targetCard.specialEffect && targetCard.currentLife > 0 && finalDamageReceived > 0) {
+        await targetCard.specialEffect(this, targetCard, attacker);
     }
     // 5.3. Edward Elric (earth3): Atacante recebe dano
-    if (targetCard.id === 'earth3' && targetCard.specialEffect && targetCard.currentLife > 0 && damageToApply > 0) {
-        await targetCard.specialEffect(this, targetCard, targetCard); // Edward reage ao ser atacado
+    if (targetCard.id === 'earth3' && targetCard.specialEffect && targetCard.currentLife > 0 && finalDamageReceived > 0) {
+        await targetCard.specialEffect(this, targetCard, targetCard);
     }
     // 5.4. Zeref (dark2): Amaldiçoa o inimigo que o atacar
-    if (targetCard.id === 'dark2' && targetCard.specialEffect && targetCard.currentLife > 0 && damageToApply > 0) {
-        await targetCard.specialEffect(this, targetCard, targetCard); // Zeref reage ao ser atacado
+    if (targetCard.id === 'dark2' && targetCard.specialEffect && targetCard.currentLife > 0 && finalDamageReceived > 0) {
+        await targetCard.specialEffect(this, targetCard, targetCard);
     }
-    // 5.5. Blastoise (water1): Cura em 3 HP nos dois primeiros ataques
-    //if (targetCard.id === 'water1' && targetCard.specialEffect && targetCard.currentLife > 0 && damageToApply > 0) {
-    //    await targetCard.specialEffect(this, targetCard, targetCard); // Blastoise reage ao ser atacado
-    //}
-    // 5.6. Kisame (water2): Inflige 5 de dano sempre que recebe dano
-    if (targetCard.id === 'water2' && targetCard.specialEffect && targetCard.currentLife > 0 && damageToApply > 0) {
-        await targetCard.specialEffect(this, targetCard, targetCard); // Kisame reage ao ser atacado
+    // 5.5. Kisame (water2): Inflige 5 de dano sempre que recebe dano
+    if (targetCard.id === 'water2' && targetCard.specialEffect && targetCard.currentLife > 0 && finalDamageReceived > 0) {
+        await targetCard.specialEffect(this, targetCard, targetCard);
     }
-    // 5.7. Aang (wind2): Redireciona 50% do dano para outro inimigo aleatório
-    if (targetCard.id === 'wind2' && targetCard.specialEffect && targetCard.currentLife > 0 && damageToApply > 0) {
-        await targetCard.specialEffect(this, targetCard, targetCard); // Aang reage ao ser atacado
+    // 5.6. Aang (wind2): Redireciona 50% do dano para outro inimigo aleatório
+    if (targetCard.id === 'wind2' && targetCard.specialEffect && targetCard.currentLife > 0 && finalDamageReceived > 0) {
+        await targetCard.specialEffect(this, targetCard, targetCard);
     }
 
     // 6. VERIFICAÇÃO DE DERROTA E TRANSFORMAÇÕES/INVOCAÇÕES/EFEITOS DE MORTE
     if (targetCard.currentLife <= 0) {
         this.addLog(`${targetCard.name} foi derrotado!`);
-        this.isCardDefeated = true; // Flag global para indicar que uma carta foi derrotada
+        this.isCardDefeated = true;
 
-        let transformed = false; // Flag para saber se a carta se transformou (Gon Adulto)
+        let actionTakenAfterDefeat = false; // Flag para saber se houve regeneração, transformação ou invocação
 
-        // 6.1. Lógica de TRANSFORMAÇÃO DO GON (earth7)
-        // Ocorre ANTES de remover a carta do time para que ela possa ser substituída
-        if (targetCard.id === 'earth7') { // Se a carta derrotada é o Gon (criança)
+        // 6.1. Lógica de REGENERAÇÃO DO BAN (water7)
+        if (targetCard.id === 'water7' && targetCard.specialEffect && !targetCard.hasUsedSpecialAbilityOnce) {
+            console.log(`%c[DEBUG BAN REGEN] Ban (${targetCard.name}) foi derrotado, ativando regenera\u00e7\u00e3o...`, 'color: #00BFFF;');
+            const abilityActivated = await targetCard.specialEffect(this, targetCard, null);
+            if (abilityActivated) {
+                this.addLog(`${targetCard.name} se regenerou completamente e permanece no campo!`);
+                this.reRenderCard(targetCard);
+                actionTakenAfterDefeat = true;
+            }
+        }
+
+        // 6.2. Lógica de TRANSFORMAÇÃO DO GON (earth7)
+        if (!actionTakenAfterDefeat && targetCard.id === 'earth7' && targetCard.specialEffect) {
             this.addLog(`O poder de ${targetCard.name} explode! Ele se transforma em ${gonAdultoCardData.name}!`);
 
-            if (this.gonTransformSound) { // Toca som de transformação se configurado
+            if (this.gonTransformSound) {
                 this.gonTransformSound.play();
             }
 
-            // Cria uma NOVA instância de Card para o Gon Adulto
             const gonAdulto = new Card(
                 gonAdultoCardData.id,
                 gonAdultoCardData.name,
@@ -1200,62 +1223,58 @@ dealDamage: async function(targetCard, amount, attacker = null) {
                 gonAdultoCardData.effectDescription,
                 gonAdultoCardData.specialEffect
             );
-            gonAdulto.owner = targetCard.owner; // Mantém o mesmo dono
-            gonAdulto.position = targetCard.position; // Mantém a mesma posição no campo
+            gonAdulto.owner = targetCard.owner;
+            gonAdulto.position = targetCard.position;
 
-            // Substitui a carta Gon (criança) pela carta Gon Adulto no time do jogador
             const playerTeam = this.players[targetCard.owner].team;
             const indexInTeam = playerTeam.findIndex(c => c.id === targetCard.id);
             if (indexInTeam > -1) {
-                playerTeam[indexInTeam] = gonAdulto; // Substitui a referência no array do time
+                playerTeam[indexInTeam] = gonAdulto;
             }
 
-            this.reRenderCard(gonAdulto); // Re-renderiza para mostrar o Gon Adulto na UI
-            transformed = true; // Marca que a transformação ocorreu
+            this.reRenderCard(gonAdulto);
+            actionTakenAfterDefeat = true;
             console.log(`%c[DEBUG GON ADULTO] ${gonAdulto.name} transformado e posicionado!`, 'color: #00ff00; font-weight: bold;');
         }
         
-        // 6.2. Lógica de INVOCAÇÃO (Igris, Mago Negro) - Apenas se NÃO HOUVE UMA TRANSFORMAÇÃO
-        let summoned = false; // Flag para saber se uma carta foi invocada (Igris ou Mago Negro)
-        if (!transformed) { // Se a carta não se transformou, podemos tentar invocar
-            // Removendo a carta derrotada do array 'team' ANTES da invocação
-            // (se ela não foi transformada em Gon Adulto, pois Gon já a substituiu)
+        // 6.3. Lógica de INVOCAÇÃO (Igris, Mago Negro)
+        let summoned = false; // Flag local para esta seção
+        if (!actionTakenAfterDefeat) {
+            // Remover a carta derrotada do array 'team' se ela não foi transformada/regenerada/invocada ainda
             const playerTeam = this.players[targetCard.owner].team;
             const indexInTeam = playerTeam.findIndex(c => c.id === targetCard.id);
             if (indexInTeam > -1) {
-                playerTeam.splice(indexInTeam, 1); // Remove a carta derrotada do time
+                playerTeam.splice(indexInTeam, 1);
             }
 
             // Prioridade: Yugi (Mago Negro) primeiro
             const yugiInTeam = this.players[targetCard.owner].team.some(c => (c.id === 'light6' || c.id === 'yami_yugi') && c.currentLife > 0);
             if (yugiInTeam) {
                 console.log(`%c[DEBUG DEALDAMAGE - INVOCAR] Yugi est\u00e1 presente. Tentando invocar Mago Negro.`, 'color: #008080;');
-                // Passamos targetCard para a função de invocação pegar a posição
                 summoned = await this.summonMagoNegro(targetCard);
+                if (summoned) actionTakenAfterDefeat = true;
             }
 
             // Se Mago Negro não foi invocado, tenta Sung Jin-woo (Igris)
-            if (!summoned) {
-                const sungJinWooInTeam = this.players[targetCard.owner].team.some(c => c.id === 'dark5' && c.currentLife > 0);
-                if (sungJinWooInWooInTeam) { // Corrigido typo aqui, era 'sungJinWooInWooInTeam'
+            if (!actionTakenAfterDefeat) {
+                const sungJinWooInTeam = this.players[targetCard.owner].team.find(c => c.id === 'dark5' && c.currentLife > 0);
+                if (sungJinWooInTeam) {
                     console.log(`%c[DEBUG DEALDAMAGE - INVOCAR] Sung Jin-woo est\u00e1 presente. Tentando invocar Igris.`, 'color: #008080;');
-                    // Passamos targetCard para a função de invocação pegar a posição
                     summoned = await this.summonIgris(targetCard);
+                    if (summoned) actionTakenAfterDefeat = true;
                 } else {
                     console.log(`%c[DEBUG DEALDAMAGE - INVOCAR] Nenhum feiticeiro presente para invocar.`, 'color: orange;');
                 }
             }
         }
 
-        // 6.3. Enviar para a LIXEIRA e Mostrar Overlay "DERROTADO"
-        // Isso acontece APENAS se a carta REALMENTE MORREU (não transformou e não foi substituída por invocação)
-        if (!transformed && !summoned) {
-            this.playerDefeatedCard(targetCard); // Adiciona a carta à lista de derrotadas do jogador
+        // 6.4. Enviar para a LIXEIRA e Mostrar Overlay "DERROTADO"
+        if (!actionTakenAfterDefeat) {
+            this.playerDefeatedCard(targetCard);
 
-            // Renderiza o overlay "DERROTADO" no slot da carta
             const slotOfDefeatedCard = this.getBattlefieldSlot(targetCard.owner, targetCard.position);
             if (slotOfDefeatedCard) {
-                slotOfDefeatedCard.innerHTML = ''; // Limpa o slot
+                slotOfDefeatedCard.innerHTML = '';
                 const defeatedOverlay = document.createElement('div');
                 defeatedOverlay.classList.add('absolute', 'inset-0', 'bg-red-900', 'bg-opacity-70', 'flex', 'items-center', 'justify-center', 'font-bold', 'text-xl', 'rounded-lg', 'text-white');
                 defeatedOverlay.textContent = 'DERROTADO';
@@ -1263,26 +1282,23 @@ dealDamage: async function(targetCard, amount, attacker = null) {
             }
         }
 
-        // 6.4. EFEITOS DE MORTE DE OUTRAS CARTAS (ativam ao morrer)
-        // Estes efeitos só devem ativar se a carta *derrotada* não foi substituída por outra
-        if (!transformed && !summoned) { // Se a carta realmente morreu
-            if (targetCard.id === 'fire3' && targetCard.specialEffect) { // Deidara (Fogo): Causa dano ao morrer
-                await targetCard.specialEffect(this, targetCard, targetCard); // targetCard aqui é o Deidara que morreu
+        // 6.5. EFEITOS DE MORTE DE OUTRAS CARTAS (ativam ao morrer)
+        if (!actionTakenAfterDefeat) {
+            if (targetCard.id === 'fire3' && targetCard.specialEffect) { // Deidara
+                await targetCard.specialEffect(this, targetCard, targetCard);
             }
-            // Madara (Dark): Sua habilidade é ativada em performAttack se ele derrotar alguém.
-            // Não deve ser chamada aqui para evitar duplicação ou lógica confusa.
         }
         
-        this.isCardDefeated = false; // Reseta a flag global de carta derrotada
+        this.isCardDefeated = false;
     } else {
-        // Se a carta não foi derrotada, garantimos que ela seja renderizada
+        // Se a carta não foi derrotada (vida > 0), garantimos que ela seja renderizada
         // para mostrar a nova vida ou o novo valor do escudo.
         this.reRenderCard(targetCard);
     }
     
     // 7. ATUALIZAÇÃO FINAL DA UI
-    this.updateUI(); // Atualiza a UI geral após todas as operações de dano/morte
-    console.log(`%c[DEBUG DEALDAMAGE END] ${targetCard.name} processamento de dano conclu\u00eddo.`, 'color: #ADD8E6;');
+    this.updateUI();
+    console.log(`%c[DEBUG DEALDAMAGE END] --- Fim do Processamento de Dano ---`, 'background-color: #333; color: white; padding: 2px 5px;');
 },
 
     healCard: function(targetCard, amount) {
