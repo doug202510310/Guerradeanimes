@@ -22,6 +22,7 @@ export class Card {
         this.tempAttackBonus = 0; 
         this.tempAttackBonusSource = null; 
         this.hasUsedTransformationAbilityOnce = false; // Para Yugi
+        this.hasUsedTransformationAbilityOnce = false;
         this.hasUsedSummonAbilityOnce = false;       // Para Yugi
     }
 
@@ -514,6 +515,14 @@ new Card('wind7', 'Meimei', 'Healer', [12, 14], 22, 'Ar', 'Ar: Sempre que Meimei
         }
         return false;
     }, 'img/wind7.png'),
+   new Card('wind8', 'Kilua', 'Feiticeiro', [5, 7], 30, 'Wind', 'Passivo: Após qualquer dano no campo, Kilua executa inimigos com 5 ou menos de vida(impossibilitando invocação). Se executar, ele se transforma em Kilua Godspeed (uma vez por partida).', async (game, self, target) => {
+    // Este specialEffect está aqui para manter a estrutura e consistência da classe Card.
+    // A lógica principal da execução e transformação de Kilua é gerenciada por
+    // game.checkAndExecuteKiluaPassive, que é chamada em game.dealDamage.
+    // Portanto, esta fun\u00e7\u00e3o em si n\u00e3o precisa fazer nada ativo para a passiva de execu\u00e7\u00e3o.
+    return false; // Retorna false indicando que este specialEffect n\u00e3o realizou uma a\u00e7\u00e3o espec\u00edfica por si s\u00f3.
+}, 'img/wind8.png'), // Certifique-se de ter 'img/wind8.png'
+
     // Dark
    new Card('dark1', 'Hyakkimaru', 'Tank', [3, 5], 60, 'Dark', 'Dark: No início do primeiro turno, perde metade da vida mas concede o range de ataque dele (3-5) a outra criatura Damage aliada.', async (game, self, target) => {
     console.log(`%c[DEBUG HYAKKIMARU] Habilidade de Hyakkimaru verificada. Dono: %c${self.owner}%c, Vida: %c${self.currentLife}%c, ID: %c${self.id}`, 'color: purple;', 'color: yellow;', 'color: purple;', 'color: yellow;', 'color: purple;', 'color: yellow;');
@@ -740,8 +749,8 @@ new Card('light2', 'Naruto', 'Tank', [4, 5], 52, 'Luz', 'Luz: No início do turn
         console.log(`%c[CHECKPOINT 10] Condições de ativação do Naruto são FALSAS. Detalhes: Fase=%c${game.currentPhase}%c, VidaNaruto=%c${self.currentLife}`, 'color: red;', 'color: yellow;', 'color: red;', 'color: yellow;', 'color: red;', 'color: yellow;'); // Mensagem detalhada e colorida
     }
 }),
-    new Card('light3', 'Gojo', 'Damage', [14, 17], 22, 'Luz', 'Luz: Tem 20% de dar o dano dobrado, sem aplicar o multiplicador ofensivo de dano de elemento para ele.', async (game, self, target) => {
-        if (game.isProcessingAttack && self.id === game.selectedAttacker.id && Math.random() < 0.20) {
+    new Card('light3', 'Gojo', 'Damage', [14, 17], 22, 'Luz', 'Luz: Tem 30% de dar o dano dobrado, sem aplicar o multiplicador ofensivo de dano de elemento para ele.', async (game, self, target) => {
+        if (game.isProcessingAttack && self.id === game.selectedAttacker.id && Math.random() < 0.30) {
             game.addLog(`${self.name} (Luz) DOBROU seu dano!`);
             return 2; 
         }
@@ -774,7 +783,7 @@ new Card('light2', 'Naruto', 'Tank', [4, 5], 52, 'Luz', 'Luz: No início do turn
         }
         return false; 
     }),
-    new Card('light6', 'Yugi Muto', 'Feiticeiro', [5, 7], 33, 'Luz', 'Luz: Ao iniciar a batalha, se transforma em Faraó Yami Yugi (muda imagem/nome) e concede 5 de vida máxima ao Tank aliado. Habilidade passiva: Ao ter um aliado derrotado, invoca o Mago Negro (ATK 5-7, VIDA 15, Dark, causa 5 de dano aos inimigos da fileira de trás) no lugar dele (uma vez por partida).', async (game, self, target) => {
+    new Card('light6', 'Yugi Muto', 'Feiticeiro', [5, 7], 33, 'Luz', 'Luz: Ao iniciar a batalha, se transforma em Faraó Yami Yugi (muda imagem/nome) e concede 5 de vida máxima ao Tank aliado. Habilidade passiva: Ao ter um aliado derrotado, invoca o Mago Negro (ATK 5-7, VIDA 15, Dark, causa 7 de dano aos inimigos da fileira de trás) no lugar dele (uma vez por partida).', async (game, self, target) => {
     // Este specialEffect ser\u00e1 APENAS para a transforma\u00e7\u00e3o e o buff de vida no Tank (ativa\u00e7\u00e3o: in\u00edcio da batalha)
     console.log(`%c[DEBUG YUGI - EFFECT] Habilidade de Feiticeiro (TRANSFORMAÇÃO + BUFF TANK) verificada. Dono: %c${self.owner}%c, Vida: %c${self.currentLife}`, 'color: gold;', 'color: yellow;', 'color: gold;', 'color: yellow;');
 
@@ -889,7 +898,7 @@ export const magoNegroCardData = {
     attackRange: [5, 7],
     maxLife: 15,
     element: 'Dark', // User specified Dark
-    effectDescription: 'Causa 5 de dano aos inimigos da fileira de tr\u00e1s quando invocado (uma vez).',
+    effectDescription: 'Causa 7 de dano aos inimigos da fileira de tr\u00e1s quando invocado (uma vez).',
     specialEffect: async (game, self, target) => { // Efeito que ativa na invoca\u00e7\u00e3o
         if (!self.hasUsedSpecialAbilityOnce) { // Garante que ative apenas uma vez por invoca\u00e7\u00e3o
             console.log(`%c[DEBUG MAGO NEGRO] Habilidade de invoca\u00e7\u00e3o ativada: Causa dano em \u00e1rea!`, 'color: darkblue;');
@@ -898,8 +907,8 @@ export const magoNegroCardData = {
             if (enemyBackRow.length > 0) {
                 game.addLog(`${self.name} (Evoca\u00e7\u00e3o) lan\u00e7a um ataque sombrio!`);
                 for (const enemy of enemyBackRow) {
-                    game.dealDamage(enemy, 5); // Causa 5 de dano
-                    game.addLog(`\u00a0\u00a0${enemy.name} (inimigo) recebeu 5 de dano do Mago Negro.`);
+                    game.dealDamage(enemy, 7); // Causa 7 de dano
+                    game.addLog(`\u00a0\u00a0${enemy.name} (inimigo) recebeu 7 de dano do Mago Negro.`);
                 }
                 game.updateUI();
             } else {
@@ -961,5 +970,23 @@ export const mahoragaCardData = {
             }
         }
         return false;
+    }
+};
+export const kiluaGodspeedCardData = {
+    id: 'kilua_godspeed', // ID único para Kilua Godspeed
+    name: 'Kilua Godspeed',
+    image: 'img/kilua_godspeed.png', // Imagem do Kilua Godspeed
+    type: 'Damage',
+    attackRange: [13, 16],
+    maxLife: 20,
+    element: 'Wind', // Kilua Godspeed é Wind
+    effectDescription: 'Wind: 50% de chance de esquivar de ataques.',
+    specialEffect: async (game, self, target) => {
+      // Lógica de esquiva (50% de chance)
+      if (Math.random() < 0.5) {
+        game.addLog(`${self.name} (Vento) esquivou do ataque!`);
+        return true; // Indica que esquivou
+      }
+      return false; // Não esquivou
     }
 };

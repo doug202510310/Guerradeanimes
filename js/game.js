@@ -1,6 +1,6 @@
 // js/game.js
 
-import { Card, allCards, igrisCardData, magoNegroCardData, gonAdultoCardData, mahoragaCardData} from './card.js';
+import { Card, allCards, igrisCardData, magoNegroCardData, gonAdultoCardData, mahoragaCardData, kiluaGodspeedCardData} from './card.js';
 import { shuffleArray, sleep } from './utils.js'; 
 
 // Game State Variables (consolidadas no objeto 'game')
@@ -129,7 +129,7 @@ export const game = {
         this.backgroundMusic.volume = 0.2; 
 
         this.draftSound = new Audio('audio/draft.mp3'); 
-        this.draftSound.volume = 0.5;
+        this.draftSound.volume = 0.1;
         this.attackSound = new Audio('audio/attack.mp3'); 
         this.attackSound.volume = 0.7;
         this.healSound = new Audio('audio/heal.mp3'); 
@@ -1052,10 +1052,9 @@ if (uzuiPlayer2 && uzuiPlayer2.specialEffect && !uzuiPlayer2.hasUsedSpecialAbili
 
 // Dentro do objeto 'game' no seu arquivo game.js
 
-dealDamage: async function(targetCard, amount, attacker = null) {
-    let damageToApply = amount; // Dano bruto que o atacante tentou causar
-    let finalDamageReceived = 0; // Para registrar o dano REAL que a carta recebeu na vida
-    let shouldAnimateHit = true; // Flag para controlar a animação de "acerto"
+   dealDamage: async function(targetCard, amount, attacker = null) {
+    let damageToApply = amount;
+    let finalDamageReceived = 0;
 
     console.log(`%c[DEBUG DEALDAMAGE START] --- Processando Dano ---`, 'background-color: #333; color: white; padding: 2px 5px;');
     console.log(`%c[DEBUG DEALDAMAGE START] Alvo: ${targetCard.name} (HP: ${targetCard.currentLife}/${targetCard.maxLife}), Dano Inicial: ${damageToApply}, Atacante: ${attacker ? attacker.name : 'N/A'}.`, 'color: #ADD8E6;');
@@ -1069,37 +1068,31 @@ dealDamage: async function(targetCard, amount, attacker = null) {
         this.addLog(`${banCard.name} (Agua) se interpe e sofre o dano no lugar de ${targetCard.name}!`);
         console.log(`%c[DEBUG BAN REDIRECT] Dano de ${damageToApply} redirecionado de ${targetCard.name} para ${banCard.name}.`, 'color: #00BFFF;');
         
-        // Chamada recursiva para Ban
         await this.dealDamage(banCard, damageToApply, attacker);
 
-        // Após Ban ter processado o dano, atualizamos a UI do alvo original
-        // e garantimos que ele não sofra a animação ou tenha seu HP alterado.
-        this.reRenderCard(targetCard); // Re-renderiza o alvo original (Uzui) para mostrar HP inalterado
+        this.reRenderCard(targetCard);
         this.updateUI();
         console.log(`%c[DEBUG DEALDAMAGE END] Dano redirecionado. Finalizando esta execu\u00e7\u00e3o de dealDamage.`, 'color: #ADD8E6;');
-        return; // Sai da função atual, o dano foi tratado na recursão para Ban.
+        return;
     }
 
-    // A partir daqui, o 'targetCard' é a carta que REALMENTE vai receber o dano (pode ser o Ban, ou o alvo original se não houve redirecionamento)
-
-    // 1. ANIMAÇÃO DE DANO RECEBIDO (para o alvo atual, depois de checar redirecionamento)
-    const currentTargetElement = document.getElementById(`card-${targetCard.id}`); // <-- Variável renomeada
-    if (currentTargetElement && damageToApply > 0) { // <-- Usando a nova variável
+    // 1. ANIMAÇÃO DE DANO RECEBIDO (para o alvo atual)
+    const currentTargetElement = document.getElementById(`card-${targetCard.id}`);
+    if (currentTargetElement && damageToApply > 0) {
         currentTargetElement.style.animation = 'target-hit 0.6s ease-out';
         await this.sleep(600);
-        currentTargetElement.style.animation = ''; // Remove a animação após o término
+        currentTargetElement.style.animation = '';
     }
 
     // 2. EFEITOS DE DEFESA DO ALVO QUE REDUZEM OU ANULAM DANO ANTES DO ESCUDO
-    // Estes efeitos modificam diretamente 'damageToApply' ou podem retornar (se anularem completamente)
+    // Estes efeitos modificam diretamente 'damageToApply' ou podem retornar
 
     // 2.1. Obito (wind1): 35% de chance de esquivar COMPLETAMENTE
     if (targetCard.id === 'wind1' && targetCard.specialEffect) {
         const obitoDodged = await targetCard.specialEffect(this, targetCard, targetCard);
         if (obitoDodged) {
             this.addLog(`${targetCard.name} (Vento) esquivou completamente do ataque!`);
-            damageToApply = 0; // Zera o dano
-            shouldAnimateHit = false; // Não há dano, então talvez a animação não seja necessária
+            damageToApply = 0;
             this.reRenderCard(targetCard);
             this.updateUI();
             console.log(`%c[DEBUG DEALDAMAGE END] Obito esquivou, dano zerado.`, 'color: #ADD8E6;');
@@ -1110,8 +1103,7 @@ dealDamage: async function(targetCard, amount, attacker = null) {
     // 2.2. EsquivaChance (Akali - wind5): 50% de chance de esquivar
     if (targetCard.effectsApplied['EsquivaChance'] && (attacker === null || attacker.id !== 'light4') && Math.random() < targetCard.effectsApplied['EsquivaChance'].value) {
         this.addLog(`${targetCard.name} esquivou do ataque devido ao efeito de Akali!`);
-        damageToApply = 0; // Zera o dano
-        shouldAnimateHit = false;
+        damageToApply = 0;
         delete targetCard.effectsApplied['EsquivaChance'];
         this.reRenderCard(targetCard);
         this.updateUI();
@@ -1122,7 +1114,7 @@ dealDamage: async function(targetCard, amount, attacker = null) {
     // 2.3. Gaara (earth1): 50% de chance de reduzir 5 de dano
     if (targetCard.id === 'earth1' && targetCard.specialEffect) {
         const gaaraReduction = await targetCard.specialEffect(this, targetCard, targetCard);
-        damageToApply = Math.max(0, damageToApply + gaaraReduction);
+        damageToApply = Math.max(0, damageToApply + gaaraReduction); 
         if (gaaraReduction < 0) {
             this.addLog(`${targetCard.name} (Terra) reduziu ${Math.abs(gaaraReduction)} de dano recebido!`);
         }
@@ -1166,50 +1158,103 @@ dealDamage: async function(targetCard, amount, attacker = null) {
     }
 
     // 4. APLICAÇÃO DO DANO RESTANTE NA VIDA
-    // Registra a vida antes de aplicar o dano para calcular o dano real na vida
     const lifeBeforeDamage = targetCard.currentLife; 
     targetCard.currentLife -= damageToApply;
     if (targetCard.currentLife < 0) targetCard.currentLife = 0;
 
-    finalDamageReceived = lifeBeforeDamage - targetCard.currentLife; // Dano real que a vida sofreu
+    finalDamageReceived = lifeBeforeDamage - targetCard.currentLife;
 
     this.addLog(`${targetCard.name} recebeu ${finalDamageReceived} de dano na vida. Vida restante: ${targetCard.currentLife}`);
 
+    // --- NOVO: LÓGICA DE EXECUÇÃO E TRANSFORMAÇÃO DE KILUA (wind8) ---
+    // Condição ajustada para Kilua executar: Atacante é Kilua, causou dano, e o alvo tem 5 ou menos de vida (incluindo 0).
+    // A transformação Godspeed deve acontecer apenas UMA VEZ por Kilua na partida.
+    if (attacker && attacker.id === 'wind8' && finalDamageReceived > 0 && targetCard.currentLife <= 5) {
+        // Obtenha a instância de Kilua atual no time do jogador (para verificar a flag de transformação)
+        const kiluaCardInTeam = this.players[attacker.owner].team.find(c => c.id === 'wind8' || c.id === 'kilua_godspeed'); // Busca Kilua ou Kilua Godspeed
+
+        if (kiluaCardInTeam && !kiluaCardInTeam.hasUsedTransformationAbilityOnce) {
+            this.addLog(`${attacker.name} (Vento) executa ${targetCard.name} com sua passiva de Assassino!`);
+
+            // Força a vida do alvo para 0 para garantir que ele seja considerado derrotado
+            targetCard.currentLife = 0; 
+            this.reRenderCard(targetCard); // Atualiza visualmente a vida para 0
+
+            // Transforma Kilua em Godspeed
+            const playerTeam = this.players[attacker.owner].team;
+            const indexInTeam = playerTeam.findIndex(c => c.id === attacker.id); // Encontra a posição do Kilua atual
+            if (indexInTeam > -1) {
+                const kiluaGodspeed = new Card(
+                    kiluaGodspeedCardData.id,
+                    kiluaGodspeedCardData.name,
+                    kiluaGodspeedCardData.type,
+                    kiluaGodspeedCardData.attackRange,
+                    kiluaGodspeedCardData.maxLife,
+                    kiluaGodspeedCardData.element,
+                    kiluaGodspeedCardData.effectDescription,
+                    kiluaGodspeedCardData.specialEffect
+                );
+                kiluaGodspeed.owner = attacker.owner;
+                kiluaGodspeed.position = attacker.position;
+                // Importante: Marcar a habilidade de transformação como usada
+                kiluaGodspeed.hasUsedTransformationAbilityOnce = true; 
+                playerTeam[indexInTeam] = kiluaGodspeed; // Substitui Kilua por Godspeed
+
+                this.addLog(`${attacker.name} se transforma em ${kiluaGodspeed.name}!`);
+                this.reRenderCard(kiluaGodspeed); // Atualiza a UI para mostrar Godspeed
+            }
+            this.updateUI();
+            // A carta executada será tratada como derrotada no bloco 6.
+        } else {
+             // Kilua já usou a transformação nesta partida. Ele ainda causa o dano normal, mas não executa.
+             // O dano já foi aplicado e logado, então não precisa de mais ação aqui.
+             console.log(`%c[DEBUG KILUA] Kilua não executou, pois a transformação já foi usada.`, 'color: grey;');
+        }
+    }
+    // --- FIM DA LÓGICA DE KILUA ---
+
+
     // 5. EFEITOS PÓS-DANO (reações do ALVO ao receber dano na vida)
     // Estes efeitos só ativam se a carta recebeu dano real na vida (finalDamageReceived > 0)
-    // e se ainda estiver viva.
+    // E se a carta *não foi morta pela execução do Kilua* ou se ela ainda está viva.
 
-    // 5.1. Luffy (earth6): Aumenta ataque se receber dano
-    if (targetCard.id === 'earth6' && targetCard.specialEffect && targetCard.currentLife > 0 && finalDamageReceived > 0) {
-        await targetCard.specialEffect(this, targetCard, null);
+    // A flag 'wasExecutedByKilua' deve ser verificada APÓS a lógica de Kilua
+    let wasExecutedByKilua = (attacker && attacker.id === 'wind8' && targetCard.currentLife === 0 && finalDamageReceived > 0);
+
+    if (!wasExecutedByKilua && targetCard.currentLife > 0 && finalDamageReceived > 0) {
+        // 5.1. Luffy (earth6): Aumenta ataque se receber dano
+        if (targetCard.id === 'earth6' && targetCard.specialEffect) {
+            await targetCard.specialEffect(this, targetCard, null);
+        }
+        // 5.2. Vegeta (fire7): Diminui ataque do inimigo que o atacar
+        if (targetCard.id === 'fire7' && targetCard.specialEffect) {
+            await targetCard.specialEffect(this, targetCard, attacker);
+        }
+        // 5.3. Edward Elric (earth3): Atacante recebe dano
+        if (targetCard.id === 'earth3' && targetCard.specialEffect) {
+            await targetCard.specialEffect(this, targetCard, targetCard);
+        }
+        // 5.4. Zeref (dark2): Amaldiçoa o inimigo que o atacar
+        if (targetCard.id === 'dark2' && targetCard.specialEffect) {
+            await targetCard.specialEffect(this, targetCard, targetCard);
+        }
+        // 5.5. Kisame (water2): Inflige 5 de dano sempre que recebe dano
+        if (targetCard.id === 'water2' && targetCard.specialEffect) {
+            await targetCard.specialEffect(this, targetCard, targetCard);
+        }
+        // 5.6. Aang (wind2): Redireciona 50% do dano para outro inimigo aleatório
+        if (targetCard.id === 'wind2' && targetCard.specialEffect) {
+            await targetCard.specialEffect(this, targetCard, targetCard);
+        }
     }
-    // 5.2. Vegeta (fire7): Diminui ataque do inimigo que o atacar
-    if (targetCard.id === 'fire7' && targetCard.specialEffect && targetCard.currentLife > 0 && finalDamageReceived > 0) {
-        await targetCard.specialEffect(this, targetCard, attacker);
-    }
-    // 5.3. Edward Elric (earth3): Atacante recebe dano
-    if (targetCard.id === 'earth3' && targetCard.specialEffect && targetCard.currentLife > 0 && finalDamageReceived > 0) {
-        await targetCard.specialEffect(this, targetCard, targetCard);
-    }
-    // 5.4. Zeref (dark2): Amaldiçoa o inimigo que o atacar
-    if (targetCard.id === 'dark2' && targetCard.specialEffect && targetCard.currentLife > 0 && finalDamageReceived > 0) {
-        await targetCard.specialEffect(this, targetCard, targetCard);
-    }
-    // 5.5. Kisame (water2): Inflige 5 de dano sempre que recebe dano
-    if (targetCard.id === 'water2' && targetCard.specialEffect && targetCard.currentLife > 0 && finalDamageReceived > 0) {
-        await targetCard.specialEffect(this, targetCard, targetCard);
-    }
-    // 5.6. Aang (wind2): Redireciona 50% do dano para outro inimigo aleatório
-    if (targetCard.id === 'wind2' && targetCard.specialEffect && targetCard.currentLife > 0 && finalDamageReceived > 0) {
-        await targetCard.specialEffect(this, targetCard, targetCard);
-    }
+
 
     // 6. VERIFICAÇÃO DE DERROTA E TRANSFORMAÇÕES/INVOCAÇÕES/EFEITOS DE MORTE
     if (targetCard.currentLife <= 0) {
         this.addLog(`${targetCard.name} foi derrotado!`);
         this.isCardDefeated = true;
 
-        let actionTakenAfterDefeat = false; // Flag para saber se houve regeneração, transformação ou invocação
+        let actionTakenAfterDefeat = false;
 
         // 6.1. Lógica de REGENERAÇÃO DO BAN (water7)
         if (targetCard.id === 'water7' && targetCard.specialEffect && !targetCard.hasUsedSpecialAbilityOnce) {
@@ -1257,7 +1302,7 @@ dealDamage: async function(targetCard, amount, attacker = null) {
         // 6.3. Lógica de INVOCAÇÃO (Igris, Mago Negro)
         let summoned = false; // Flag local para esta seção
         if (!actionTakenAfterDefeat) {
-            // Remover a carta derrotada do array 'team' se ela não foi transformada/regenerada/invocada ainda
+            // Remover a carta derrotada do array 'team' SE ELA AINDA ESTIVER LÁ.
             const playerTeam = this.players[targetCard.owner].team;
             const indexInTeam = playerTeam.findIndex(c => c.id === targetCard.id);
             if (indexInTeam > -1) {
@@ -1288,7 +1333,6 @@ dealDamage: async function(targetCard, amount, attacker = null) {
         // 6.4. Enviar para a LIXEIRA e Mostrar Overlay "DERROTADO"
         if (!actionTakenAfterDefeat) {
             this.playerDefeatedCard(targetCard);
-
             const slotOfDefeatedCard = this.getBattlefieldSlot(targetCard.owner, targetCard.position);
             if (slotOfDefeatedCard) {
                 slotOfDefeatedCard.innerHTML = '';
@@ -1308,12 +1352,20 @@ dealDamage: async function(targetCard, amount, attacker = null) {
         
         this.isCardDefeated = false;
     } else {
-        // Se a carta não foi derrotada (vida > 0), garantimos que ela seja renderizada
-        // para mostrar a nova vida ou o novo valor do escudo.
         this.reRenderCard(targetCard);
     }
     
     // 7. ATUALIZAÇÃO FINAL DA UI
+    // --- NOVO: CHECAGEM DA PASSIVA DE KILUA APÓS TODO O DANO E MORTES ---
+    // Faz a checagem para AMBOS os jogadores, pois o dano pode ter vindo de qualquer um.
+    await this.checkAndExecuteKiluaPassive(this.players.player1.name === this.players.player1.name ? 'player1' : 'player2'); // Checa para player1
+    await this.checkAndExecuteKiluaPassive(this.players.player2.name === this.players.player2.name ? 'player2' : 'player1'); // Checa para player2
+    // A condição `this.players.playerX.name === this.players.playerX.name` é sempre verdadeira.
+    // O correto seria passar 'player1' ou 'player2' diretamente.
+
+    await this.checkAndExecuteKiluaPassive('player1'); // Checa Kilua do Jogador 1
+    await this.checkAndExecuteKiluaPassive('player2'); // Checa Kilua do Jogador 2
+
     this.updateUI();
     console.log(`%c[DEBUG DEALDAMAGE END] --- Fim do Processamento de Dano ---`, 'background-color: #333; color: white; padding: 2px 5px;');
 },
@@ -1719,5 +1771,76 @@ summonMahoraga: async function(sacrificedCard) { // Recebe a carta sacrificada (
         this.addLog(`ERRO na invoca\u00e7\u00e3o do Mahoraga: ${error.message}`);
         return false;
     }
+},
+transformKiluaToGodspeed: async function(kiluaCardInstance) {
+    if (!kiluaCardInstance || kiluaCardInstance.id !== 'wind8' || kiluaCardInstance.hasUsedTransformationAbilityOnce) {
+        return false; // Não é Kilua ou já transformou
+    }
+
+    this.addLog(`${kiluaCardInstance.name} (Vento) atinge seu limite e se transforma em ${kiluaGodspeedCardData.name}!`);
+    // Tocar som de transformação (se tiver um para Kilua)
+    if (this.kiluaTransformSound) { // Assumindo que você adicionou kiluaTransformSound no game.init()
+        this.kiluaTransformSound.play();
+    } else {
+        console.warn("Som de transforma\u00e7\u00e3o do Kilua n\u00e3o configurado.");
+    }
+
+    const playerTeam = this.players[kiluaCardInstance.owner].team;
+    const indexInTeam = playerTeam.findIndex(c => c.id === kiluaCardInstance.id);
+
+    if (indexInTeam > -1) {
+        const kiluaGodspeed = new Card(
+            kiluaGodspeedCardData.id,
+            kiluaGodspeedCardData.name,
+            kiluaGodspeedCardData.type,
+            kiluaGodspeedCardData.attackRange,
+            kiluaGodspeedCardData.maxLife,
+            kiluaGodspeedCardData.element,
+            kiluaGodspeedCardData.effectDescription,
+            kiluaGodspeedCardData.specialEffect
+        );
+        kiluaGodspeed.owner = kiluaCardInstance.owner;
+        kiluaGodspeed.position = kiluaCardInstance.position;
+        kiluaGodspeed.hasUsedTransformationAbilityOnce = true; // Marca como usada na nova instância
+
+        playerTeam[indexInTeam] = kiluaGodspeed; // Substitui no time
+        this.reRenderCard(kiluaGodspeed); // Renderiza a nova carta
+        this.updateUI();
+        return true;
+    }
+    return false;
+},
+checkAndExecuteKiluaPassive: async function(playerToCheckId) {
+    const kiluaCard = this.players[playerToCheckId].team.find(c => c.id === 'wind8' && c.currentLife > 0);
+
+    // Se não há Kilua ou ele já transformou, não faz nada
+    if (!kiluaCard || kiluaCard.hasUsedTransformationAbilityOnce) {
+        return false;
+    }
+
+    const opponentPlayerId = this.getOpponent(playerToCheckId);
+    const opponentCards = this.getPlayersCards(opponentPlayerId);
+
+    // Procura por um inimigo para executar (o primeiro encontrado)
+    for (const enemy of opponentCards) {
+        if (enemy.currentLife > 0 && enemy.currentLife <= 5) { // Inimigo vivo com 5 ou menos de vida
+            this.addLog(`${kiluaCard.name} (Vento) detectou ${enemy.name} com vida baixa e ativa sua execução passiva!`);
+
+            // Aqui Kilua "ataca e executa". O dano é sempre o suficiente para zerar.
+            // Para efeitos de log e rastreamento, vamos simular o dano final.
+            const damageCausedByKilua = enemy.currentLife; // Kilua causa dano igual à vida restante do alvo
+            enemy.currentLife = 0; // Executa o inimigo
+            
+            this.addLog(`${enemy.name} foi executado por ${kiluaCard.name}!`);
+            this.reRenderCard(enemy); // Atualiza o visual do inimigo (vida zerada)
+
+            // Tentar transformar Kilua
+            await this.transformKiluaToGodspeed(kiluaCard);
+
+            // A carta executada será tratada como derrotada no final de dealDamage
+            return true; // Indica que uma execução ocorreu
+        }
+    }
+    return false; // Nenhuma execução ocorreu
 },
 };
