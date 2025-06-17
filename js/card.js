@@ -161,7 +161,7 @@ export const allCards = [
         }
         return 0;
     }),
-   new Card('water6', 'Uzui [Agua]', 'Damage', [14, 17], 22, 'Agua', 'Agua: Ao iniciar a batalha, marca um inimigo aleat\u00f3rio com Partitura, fazendo-o sofrer 3 de dano a mais sempre que atacado (dura a partida toda).', async (game, self, target) => {
+   new Card('water6', 'Uzui', 'Damage', [14, 17], 22, 'Agua', 'Agua: Ao iniciar a batalha, marca um inimigo aleat\u00f3rio com Partitura, fazendo-o sofrer 3 de dano a mais sempre que atacado (dura a partida toda).', async (game, self, target) => {
     // Este specialEffect ser\u00e1 chamado APENAS no in\u00edcio da batalha
     console.log(`%c[DEBUG UZUI] Habilidade de Uzui (Partitura Autom\u00e1tica) verificada. Dono: %c${self.owner}%c.`, 'color: #00BFFF;', 'color: yellow;', 'color: #00BFFF;');
 
@@ -568,7 +568,7 @@ new Card('wind7', 'Meimei', 'Healer', [12, 14], 22, 'Ar', 'Ar: Sempre que Meimei
             game.updateUI();
         }
     }),
-    new Card('dark4', 'Itachi', 'Damage', [11, 13], 22, 'Dark', 'Dark: Pode atacar diretamente qualquer criatura inimiga, ignorando a regra de Tanks.', null),
+    new Card('dark4', 'Itachi', 'Damage', [10, 12], 22, 'Dark', 'Dark: Pode atacar diretamente qualquer criatura inimiga, ignorando a regra de Tanks.', null),
     new Card('dark5', 'Sung Jin-woo', 'Feiticeiro', [5, 7], 33, 'Dark', 'Dark: Ao iniciar a batalha, concede seu ataque (5-7) ao Tank aliado mais ferido. Habilidade passiva: Ao ter um aliado derrotado, invoca a sombra Igris (ATK 10-13, VIDA 25) no lugar dele (uma vez por partida).', async (game, self, target) => {
     // ESTE specialEffect agora será APENAS para o Buff de Ataque no Tank (ativação: início da batalha)
     console.log(`%c[DEBUG SUNG JIN-WOO - EFFECT] Habilidade de Feiticeiro (BUFF TANK) verificada. Dono: %c${self.owner}%c, Vida: %c${self.currentLife}`, 'color: purple;', 'color: yellow;', 'color: purple;', 'color: yellow;');
@@ -598,7 +598,7 @@ new Card('wind7', 'Meimei', 'Healer', [12, 14], 22, 'Ar', 'Ar: Sempre que Meimei
     return false;
 }),
 
-new Card('dark6', 'Merlin [Dark]', 'Healer', [11, 12], 30, 'Dark', 'Dark: Para curar um aliado, ela drena a mesma quantidade de vida de um inimigo aleat\u00f3rio.', async (game, self, target) => {
+new Card('dark6', 'Merlin', 'Healer', [11, 12], 30, 'Dark', 'Dark: Para curar um aliado, ela drena a mesma quantidade de vida de um inimigo aleat\u00f3rio.', async (game, self, target) => {
     // Este specialEffect será chamado quando Merlin for usada para curar
     console.log(`%c[DEBUG MERLIN] Habilidade de Merlin (DRENAR CURA) verificada. Curando: %c${target.name}%c.`, 'color: darkviolet;', 'color: yellow;', 'color: darkviolet;');
 
@@ -663,7 +663,48 @@ new Card('dark6', 'Merlin [Dark]', 'Healer', [11, 12], 30, 'Dark', 'Dark: Para c
         }
         return false;
     }, 'img/dark7.png'), // Certifique-se de ter 'img/dark7.png'
-// js/card.js - dentro do specialEffect do Naruto ('light2')
+new Card('dark8', 'Megumi', 'Feiticeiro', [5, 7], 30, 'Dark', 'Dark: Passivo: Sempre que um ataque acontece (aliado ou inimigo), Megumi drena 1 de vida de todos os inimigos. Se for o único aliado vivo, se sacrifica para invocar Mahoraga.', async (game, self, target) => {
+        // Este specialEffect será ativado em dois cenários:
+        // 1. Passivo de dreno: Chamado em game.performAttack (para drenar)
+        // 2. Sacrifício/Invocação: Chamado em game.endTurn (para checar "último vivo")
+
+        // Lógica para o efeito de dreno passivo (quando self.id === game.selectedAttacker.id não será o caso)
+        // Mas esta função será chamada para Megumi a cada ataque.
+        if (game.isProcessingAttack && game.selectedAttacker) { // Garante que um ataque está acontecendo
+            // Verifica se a habilidade de dreno de Megumi já foi ativada para este ataque
+            // Poderíamos adicionar uma flag para isso, mas o ideal é que seja chamado pelo performAttack
+            // Uma flag no Megumi, tipo self.hasDrainedThisAttack, seria mais robusta,
+            // mas vamos confiar no fluxo de performAttack para chamar uma vez.
+            
+            game.addLog(`${self.name} (Dark) ativa seu dreno passivo!`);
+            
+            // Tocar som do Megumi (opcional)
+            if (game.megumiSound) {
+                game.megumiSound.play();
+            } else {
+                console.warn("Som do Megumi não configurado.");
+            }
+
+            const opponentCards = game.getPlayersCards(game.getOpponent(self.owner)).filter(c => c.currentLife > 0);
+            const drainAmount = 1;
+
+            if (opponentCards.length > 0) {
+                for (const enemy of opponentCards) {
+                    game.dealDamage(enemy, drainAmount, self); // Megumi causa 1 de dano a cada inimigo
+                    game.addLog(`  ${enemy.name} sofreu ${drainAmount} de dano do dreno de Megumi.`);
+                }
+                game.updateUI(); // Atualiza a UI após os drenos
+                return true; // Indica que o dreno foi ativado
+            }
+            return false; // Ninguém para drenar
+        }
+
+        // A lógica de sacrifício/invocação de Mahoraga será tratada em 'game.endTurn' ou 'game.dealDamage'.
+        // O specialEffect de Megumi não será o responsável direto por essa ativação,
+        // mas o Mahoraga terá seu próprio specialEffect para o dano on-summon.
+        return false;
+    }, 'img/dark8.png'),
+
 new Card('light1', 'Hashirama', 'Tank', [2, 4], 50, 'Luz', 'Luz: Quando Hashirama recebe dano, ele tem 50% de chance de reduzir esse dano em 5.', async (game, self, target) => {
     if (game.isProcessingAttack && self.id === target.id && Math.random() < 0.50) {
             game.addLog(`${self.name} (Terra) reduziu 5 de dano recebido!`);
@@ -881,4 +922,44 @@ export const magoNegroCardData = {
     effectDescription: 'Terra: Uma forma liberada de poder insano.',
     specialEffect: null // Gon Adulto não tem um efeito especial on-transform ou por turno, ele é pura estatística
 
+};
+export const mahoragaCardData = {
+    id: 'mahoraga', // ID único para Mahoraga
+    name: 'General Mahoraga (Evoca\u00e7\u00e3o)', // Use \u00e7 para 'ça'
+    image: 'img/mahoraga.png', // Imagem do Mahoraga
+    type: 'Damage',
+    attackRange: [10, 15],
+    maxLife: 30,
+    element: 'Dark', // Mahoraga é Dark
+    effectDescription: 'Dark: Causa 5 de dano a todos os inimigos ao ser invocado.',
+    specialEffect: async (game, self, target) => { // Efeito que ativa na invocação
+        // Este specialEffect será chamado imediatamente após Mahoraga ser invocado.
+        if (!self.hasUsedSpecialAbilityOnce) { // Garante que ative apenas uma vez por invocação
+            console.log(`%c[DEBUG MAHORAGA] Habilidade de invoca\u00e7\u00e3o de Mahoraga ativada: Causa dano em \u00e1rea!`, 'color: #8A2BE2;'); // Azul Violeta
+            
+            // Tocar som de Mahoraga (opcional)
+            if (game.mahoragaSound) {
+                game.mahoragaSound.play();
+            } else {
+                console.warn("Som do Mahoraga não configurado.");
+            }
+
+            const damageAmount = 5;
+            const opponentCards = game.getPlayersCards(game.getOpponent(self.owner)).filter(c => c.currentLife > 0);
+
+            if (opponentCards.length > 0) {
+                game.addLog(`${self.name} (Evoca\u00e7\u00e3o) desata uma f\u00faria e causa ${damageAmount} de dano a todos os inimigos!`);
+                for (const enemy of opponentCards) {
+                    await game.dealDamage(enemy, damageAmount, self); // Mahoraga causa dano
+                    game.addLog(`  ${enemy.name} recebeu ${damageAmount} de dano de Mahoraga.`);
+                }
+                game.updateUI(); // Atualiza a UI após todos os danos
+                self.hasUsedSpecialAbilityOnce = true; // Marca o efeito on-summon como usado
+                return true;
+            } else {
+                game.addLog(`${self.name} (Evoca\u00e7\u00e3o) n\u00e3o encontrou inimigos para atacar ao ser invocado.`);
+            }
+        }
+        return false;
+    }
 };

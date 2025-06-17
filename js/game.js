@@ -1,6 +1,6 @@
 // js/game.js
 
-import { Card, allCards, igrisCardData, magoNegroCardData, gonAdultoCardData} from './card.js';
+import { Card, allCards, igrisCardData, magoNegroCardData, gonAdultoCardData, mahoragaCardData} from './card.js';
 import { shuffleArray, sleep } from './utils.js'; 
 
 // Game State Variables (consolidadas no objeto 'game')
@@ -145,6 +145,8 @@ export const game = {
         this.escanorSound.volume = 0.7; // Ajuste o volume conforme desejar
         this.gonTransformSound = new Audio('audio/GonTransform.mp4');
         this.gonTransformSound.volume = 1.0; // Ajuste o volume conforme desejar
+        this.mahoragaSound = new Audio('audio/Mahoraga.mp3'); // <--- NOVO: Som do Mahoraga
+        this.mahoragaSound.volume = 0.9; // Mahoraga merece um som alto!
 
         this.bindEventListeners();
         this.showScreen('mainMenu');
@@ -897,7 +899,22 @@ if (uzuiPlayer2 && uzuiPlayer2.specialEffect && !uzuiPlayer2.hasUsedSpecialAbili
     // 7. Aplicar Dano ao Alvo (Função dealDamage lida com Escudo, Esquiva, Redução do alvo)
     // Passamos o atacante para dealDamage para que habilidades como Kakashi possam ignorar defesas.
     await this.dealDamage(target, finalDamage, attacker);
+ // --- NOVO: LÓGICA DO EFEITO PASSIVO DE DRENO DE MEGUMI (dark8) ---
+    // Ativa APÓS o dano principal, em cada ataque no jogo
+    // (Apenas se não for um segundo hit do Toji, para não drenar duas vezes por ataque principal)
+    if (!isSecondHit) {
+        const megumiPlayer1 = this.players.player1.team.find(c => c.id === 'dark8' && c.currentLife > 0);
+        const megumiPlayer2 = this.players.player2.team.find(c => c.id === 'dark8' && c.currentLife > 0);
 
+        if (megumiPlayer1 && megumiPlayer1.specialEffect) {
+            // Megumi sempre tenta drenar, não importa quem atacou.
+            // O specialEffect dele já cuida da lógica de dreno.
+            await megumiPlayer1.specialEffect(this, megumiPlayer1, null);
+        }
+        if (megumiPlayer2 && megumiPlayer2.specialEffect) {
+            await megumiPlayer2.specialEffect(this, megumiPlayer2, null);
+        }
+    }
     // 8. Efeitos Pós-Dano no ALVO (reações do ALVO ao receber dano)
     // Estes efeitos só devem ocorrer se não for um "segundo hit" de habilidades (como Toji).
     if (!isSecondHit) {
@@ -1424,7 +1441,7 @@ dealDamage: async function(targetCard, amount, attacker = null) {
         this.healButton.classList.add('hidden');
     },
 
-    endTurn: function() {
+   endTurn: async function() {
         if (this.players.player1.team.filter(c => c.currentLife > 0).length === 0) {
             this.endGame(this.players.player2.name);
             return;
@@ -1433,6 +1450,32 @@ dealDamage: async function(targetCard, amount, attacker = null) {
             this.endGame(this.players.player1.name);
             return;
         }
+           for (const playerId in this.players) {
+        const currentPlayerCards = this.getPlayersCards(playerId);
+        const megumiInTeam = currentPlayerCards.find(c => c.id === 'dark8');
+
+        // Se Megumi está vivo no time, e ele é o único aliado vivo, e não usou a habilidade de invocação ainda.
+        if (megumiInTeam && currentPlayerCards.length === 1 && !megumiInTeam.hasUsedSpecialAbilityOnce) {
+            this.addLog(`${megumiInTeam.name} (Dark) é o \u00fanico sobrevivente! Ele se sacrifica para invocar o General Mahoraga!`);
+            
+            // Marca a habilidade de Megumi como usada para que ele não invoque de novo
+            megumiInTeam.hasUsedSpecialAbilityOnce = true;
+
+            // Remove Megumi do campo (sacrifício)
+            const playerTeam = this.players[playerId].team;
+            const indexInTeam = playerTeam.findIndex(c => c.id === megumiInTeam.id);
+            if (indexInTeam > -1) {
+                playerTeam.splice(indexInTeam, 1);
+            }
+            this.playerDefeatedCard(megumiInTeam); // Adiciona Megumi aos derrotados
+
+            // Invoca Mahoraga na posição de Megumi
+            await this.summonMahoraga(megumiInTeam); // megumiInTeam tem a posição para Mahoraga
+
+            this.updateUI(); // Atualiza a UI para remover Megumi e mostrar Mahoraga
+            // Não retorna aqui, pois o jogo precisa verificar o próximo turno.
+        }
+    }
 
         this.currentPlayerId = this.getOpponent(this.currentPlayerId);
         this.battleTurn++; 
@@ -1639,5 +1682,42 @@ summonMagoNegro: async function(defeatedCard) { // Adicione 'async' aqui, se ain
         return false;
     }
 },
+summonMahoraga: async function(sacrificedCard) { // Recebe a carta sacrificada (Megumi) para pegar a posição
+    console.log(`%c[DEBUG MAHORAGA - SUMMON] Tentando invocar Mahoraga na posi\u00e7\u00e3o de ${sacrificedCard.name}.`, 'color: #8A2BE2;');
 
+    try {
+        // Cria uma nova instância da carta Mahoraga
+        const Mahoraga = new Card(
+            mahoragaCardData.id,
+            mahoragaCardData.name,
+            mahoragaCardData.type,
+            mahoragaCardData.attackRange,
+            mahoragaCardData.maxLife,
+            mahoragaCardData.element,
+            mahoragaCardData.effectDescription,
+            mahoragaCardData.specialEffect
+        );
+        Mahoraga.owner = sacrificedCard.owner;
+        Mahoraga.position = sacrificedCard.position;
+
+        this.players[sacrificedCard.owner].team.push(Mahoraga); // Adiciona Mahoraga ao time
+
+        this.addLog(`O General ${Mahoraga.name} foi invocado na posi\u00e7\u00e3o de ${sacrificedCard.name}!`);
+        console.log(`%c[DEBUG MAHORAGA - SUMMON] ${Mahoraga.name} invocado!`, 'color: #00ff00; font-weight: bold;');
+
+        this.reRenderCard(Mahoraga); // Re-renderiza a carta Mahoraga na posição
+
+        // Ativa o efeito on-summon do Mahoraga imediatamente
+        if (Mahoraga.specialEffect) {
+            await Mahoraga.specialEffect(this, Mahoraga, null);
+        }
+
+        this.updateUI();
+        return true;
+    } catch (error) {
+        console.error(`%c[ERRO MAHORAGA INVOCA\u00c7\u00c3O] Erro inesperado:`, 'color: white; background-color: red; padding: 5px;', error);
+        this.addLog(`ERRO na invoca\u00e7\u00e3o do Mahoraga: ${error.message}`);
+        return false;
+    }
+},
 };
