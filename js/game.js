@@ -1,6 +1,6 @@
 // js/game.js
 
-import { Card, allCards, igrisCardData, magoNegroCardData, gonAdultoCardData, mahoragaCardData, kiluaGodspeedCardData} from './card.js';
+import { Card, allCards, igrisCardData, magoNegroCardData, gonAdultoCardData, mahoragaCardData, kiluaGodspeedCardData, sasukeRinneganCardData, allMightCardData} from './card.js';
 import { shuffleArray, sleep } from './utils.js'; 
 
 // Game State Variables (consolidadas no objeto 'game')
@@ -76,7 +76,7 @@ export const game = {
     attackSound: null,
     healSound: null,
     turnTransitionSound: null,
-
+    sasukeAmaterasuSound: null,
     // --- Métodos do Jogo ---
     init: function() {
         // Atribui elementos DOM às propriedades do objeto game
@@ -136,17 +136,28 @@ export const game = {
         this.healSound.volume = 0.5;
         this.turnTransitionSound = new Audio('audio/turn_transition.mp3'); 
         this.turnTransitionSound.volume = 0.4;
-        this.transformationSound = new Audio('audio/transformation.mp3'); // Você precisará criar este arquivo de áudio
+        this.transformationSound = new Audio('audio/generic_transformation.mp3'); // Você precisará criar este arquivo de áudio
         this.transformationSound.volume = 0.6;
         this.transformationSound.playbackRate = 1.2; // Ajuste a velocidade de reprodução se necessário
         this.sukunaSound = new Audio('audio/Sukuna.mp3');
-        this.sukunaSound.volume = 0.7;
+        this.sukunaSound.volume = 0.4;
+        this.sukunaSound.playbackRate = 1.2; // Ajuste a velocidade de reprodução se necessário
         this.escanorSound = new Audio('audio/Escanor.mp3'); // <--- ADICIONE ESTA LINHA para Escanor
         this.escanorSound.volume = 0.7; // Ajuste o volume conforme desejar
         this.gonTransformSound = new Audio('audio/GonTransform.mp4');
         this.gonTransformSound.volume = 1.0; // Ajuste o volume conforme desejar
-        this.mahoragaSound = new Audio('audio/Mahoraga.mp3'); // <--- NOVO: Som do Mahoraga
+        this.mahoragaSound = new Audio('audio/mahoragaSound.mp3'); // <--- NOVO: Som do Mahoraga
         this.mahoragaSound.volume = 0.9; // Mahoraga merece um som alto!
+         this.sasukeAmaterasuSound = new Audio('audio/amaterasu.mp3'); // Você precisará criar este arquivo de áudio
+        this.sasukeAmaterasuSound.volume = 0.4;
+        this.sasukeAmaterasuSound.playbackRate = 1.2;
+         this.shinraTenseiSound = new Audio('audio/shinra_tensei.mp3'); // <--- ADICIONE ESTA LINHA
+        this.shinraTenseiSound.volume = 0.4; // Ajuste o volume como desejar
+        this.allMightTransformSound = new Audio('audio/all_might_transform.mp3');
+        this.allMightTransformSound.volume = 0.7;
+        this.yugiFaraoTransformSound = new Audio('audio/transformation_farao.mp3'); // <--- NOVO
+        this.yugiFaraoTransformSound.volume = 0.7;
+    
 
         this.bindEventListeners();
         this.showScreen('mainMenu');
@@ -584,156 +595,149 @@ if (uzuiPlayer2 && uzuiPlayer2.specialEffect && !uzuiPlayer2.hasUsedSpecialAbili
     },
 
       handleCardClick: async function(cardId) {
-        const clickedCard = this.getCardById(cardId);
-        if (!clickedCard || clickedCard.currentLife <= 0) { 
-            this.addLog("Esta carta est\u00e1 derrotada ou n\u00e3o \u00e9 v\u00e1lida.");
-            console.log(`%c[DEBUG CLICK] Carta inv\u00e1lida: ${clickedCard ? clickedCard.name : 'N/A'}, Vida: ${clickedCard ? clickedCard.currentLife : 'N/A'}`, 'color: orange;');
+    const clickedCard = this.getCardById(cardId);
+
+    // 1. Validação inicial da carta clicada
+    if (!clickedCard || clickedCard.currentLife <= 0) {
+        this.addLog("Esta carta está derrotada ou não é válida. Selecione uma carta viva.");
+        this.clearSelections(); // Sempre limpa se a seleção é inválida
+        console.log(`%c[DEBUG CLICK] Carta inválida: ${clickedCard ? clickedCard.name : 'N/A'}, Vida: ${clickedCard ? clickedCard.currentLife : 'N/A'}`, 'color: orange;');
+        return;
+    }
+
+    console.log(`%c[DEBUG CLICK] Clicou em: ${clickedCard.name} (ID: ${clickedCard.id}, Dono: ${clickedCard.owner})`, 'color: cyan;');
+
+    // 2. Lógica de seleção de ATACANTE
+    if (!this.selectedAttacker) {
+        // Verifica se é uma carta do jogador atual e se ela pode agir
+        const isOwner = clickedCard.owner === this.currentPlayerId;
+        const hasNotActed = !clickedCard.hasAttackedThisTurn;
+        const canPerformAction = clickedCard.canAttack; // 'canAttack' controla efeitos como Amaldiçoar
+
+        if (isOwner && hasNotActed && canPerformAction) {
+            this.selectedAttacker = clickedCard;
+            this.addLog(`Você selecionou ${clickedCard.name} para agir.`);
+            this.updateUI(); // Renderiza para destacar o atacante selecionado
+
+            // Esconde os botões por padrão, eles só aparecerão se um alvo válido for selecionado
             this.attackButton.classList.add('hidden');
             this.healButton.classList.add('hidden');
+
+            console.log(`%c[DEBUG CLICK] ${clickedCard.name} selecionado como atacante.`, 'color: lightgreen;');
+            return; // Sai da função após selecionar o atacante
+        } else {
+            // Se a carta clicada não pode ser um atacante (não é do dono, já agiu, etc.)
+            if (!isOwner) {
+                this.addLog("Você deve selecionar uma de suas próprias cartas para agir.");
+            } else if (!hasNotActed) {
+                this.addLog("Esta carta já agiu neste turno.");
+            } else if (!canPerformAction) {
+                this.addLog("Esta carta está sob um efeito que impede sua ação.");
+            }
+            this.clearSelections(); // Limpa qualquer seleção anterior
+            console.log(`%c[DEBUG CLICK] ${clickedCard.name} não pode ser selecionado como atacante.`, 'color: darkred;');
+            return;
+        }
+    }
+
+    // 3. Lógica de seleção de ALVO (se já temos um atacante selecionado)
+    console.log(`%c[DEBUG CLICK] Atacante já selecionado: ${this.selectedAttacker.name}. Tentando selecionar alvo: ${clickedCard.name}.`, 'color: cyan;');
+
+    // Resetar botões antes de reavaliar
+    this.attackButton.classList.add('hidden');
+    this.healButton.classList.add('hidden');
+
+    // Clicou no próprio atacante novamente: deseleciona
+    if (this.selectedAttacker.id === clickedCard.id) {
+        this.addLog(`Deselecionou ${clickedCard.name}.`);
+        this.clearSelections();
+        return;
+    }
+
+    // 3.1. Alvo ALIADO (para cura ou habilidades em aliados)
+    if (this.selectedAttacker.owner === clickedCard.owner) {
+        // Verifica se o atacante é um Healer ou Rengoku (que tem uma ação de "cura")
+        // NOTE: Feiticeiros não tem ação de "clicar para curar"
+        if (this.selectedAttacker.type === 'Healer' || this.selectedAttacker.id === 'fire5') {
+            // Lógica específica para Julius Novachrono (light5)
+            if (this.selectedAttacker.id === 'light5' && this.selectedAttacker.hasUsedSpecialAbilityOnce) {
+                this.addLog(`${this.selectedAttacker.name} já usou sua habilidade especial neste jogo.`);
+                this.clearSelections();
+                return;
+            }
+            // Não pode curar/purificar alvo com vida cheia e sem debuffs (se for Julius)
+            if (this.selectedAttacker.id === 'light5') { // Apenas Julius tem essa condição extra
+                 const hasNegativeEffects = Object.keys(clickedCard.effectsApplied).some(effectName =>
+                     ['Amaldiçoar', 'Queimar', 'Enraizar', 'Atordoar', 'Partitura'].includes(effectName) // Adicionado Partitura aqui
+                 );
+                if (clickedCard.currentLife >= clickedCard.maxLife && !hasNegativeEffects) {
+                    this.addLog(`${clickedCard.name} já tem vida máxima e nenhum efeito negativo para ${this.selectedAttacker.name} purificar.`);
+                    this.clearSelections();
+                    return;
+                }
+            }
+
+
+            this.selectedTarget = clickedCard;
+            this.addLog(`Você selecionou ${clickedCard.name} como alvo de cura/habilidade.`);
+            this.healButton.classList.remove('hidden'); // Mostra o botão de CURAR
+            console.log(`%c[DEBUG BUTTONS] Alvo aliado válido para cura.`, 'color: #00ff00;');
+        } else {
+            this.addLog("Esta carta não pode curar aliados.");
             this.clearSelections();
+            console.log(`%c[DEBUG BUTTONS] Carta de Dano/Tank clicou em aliado, deselecionado.`, 'color: yellow;');
+        }
+    }
+    // 3.2. Alvo INIMIGO (para ataque)
+    else {
+        // Verifica se o atacante pode atacar inimigos (qualquer tipo que não seja "Healer" puro)
+        // Ou se é um Healer com exceção (Rengoku, Merlin tem ação especial, mas aqui é ataque)
+        const canAttackerTargetEnemy = (this.selectedAttacker.type !== 'Healer' || this.selectedAttacker.id === 'fire5' || this.selectedAttacker.id === 'dark6' || this.selectedAttacker.type === 'Feiticeiro'); // Inclui Feiticeiros aqui se eles puderem "atacar" por clique (no seu caso, eles não atacam, mas mantive o check)
+
+        if (!canAttackerTargetEnemy) {
+            this.addLog("Esta carta não pode atacar inimigos.");
+            this.clearSelections();
+            console.log(`%c[DEBUG BUTTONS] Healer padrão clicou em inimigo, deselecionado.`, 'color: yellow;');
             return;
         }
 
-        console.log(`%c[DEBUG CLICK] Clicou em: ${clickedCard.name} (ID: ${clickedCard.id}, Dono: ${clickedCard.owner})`, 'color: cyan;');
+        // Regra do Tank (se houver Tank vivo na frente, ele deve ser o alvo, a menos que o atacante ignore Tanks)
+        const opponentFrontRow = this.players[this.getOpponent(this.currentPlayerId)].team.filter(c => c.currentLife > 0 && (c.position === 'pos1' || c.position === 'pos2'));
+        const canIgnoreTanks = (this.selectedAttacker.id === 'water4' || this.selectedAttacker.id === 'dark4' || this.selectedAttacker.id === 'light4'); // Tomioka, Itachi, Kakashi
 
-        // Se nenhum atacante está selecionado, o clique é para SELECIONAR um atacante/curandeiro
-        if (!this.selectedAttacker) { 
-            console.log(`%c[DEBUG CLICK] Nenhuma carta atacante selecionada.`, 'color: cyan;');
-            
-            const isOwner = clickedCard.owner === this.currentPlayerId;
-            const hasNotActed = !clickedCard.hasAttackedThisTurn;
-            const canPerformAction = clickedCard.canAttack;
-            const isAlive = clickedCard.currentLife > 0;
-            
-            console.log(`%c[DEBUG CLICK] Checando condi\u00e7\u00f5es iniciais para ${clickedCard.name}: Dono OK? ${isOwner}, N\u00e3o agiu? ${hasNotActed}, Pode agir? ${canPerformAction}, Viva? ${isAlive}`, 'color: cyan;');
+        let isValidTargetForAttack = false;
 
-            if (isOwner && hasNotActed && canPerformAction && isAlive) {
-                console.log(`%c[DEBUG CLICK] ${clickedCard.name} passou nas condi\u00e7\u00f5es iniciais.`, 'color: lightgreen;');
-                this.selectedAttacker = clickedCard;
-                this.addLog(`Voc\u00ea selecionou ${clickedCard.name}.`);
-                this.updateUI(); 
-                
-                // >>> NOVA LÓGICA DE EXIBIÇÃO DE BOTÕES DE AÇÃO: Ordem de prioridade importa <<<
-                // Prioridade 1: Rengoku (fire5) - Healer que ataca se tiver aliado de Fogo
-                if (clickedCard.id === 'fire5') { 
-                    const fireAllies = this.getPlayersCards(clickedCard.owner).filter(c => c.element === 'Fogo' && c.id !== clickedCard.id && c.currentLife > 0);
-                    if (fireAllies.length >= 1) { 
-                        this.attackButton.classList.remove('hidden');
-                        this.healButton.classList.add('hidden');
-                        this.addLog(`Rengoku pode atacar devido \u00e0 presen\u00e7a de outros aliados de Fogo.`);
-                        console.log(`%c[DEBUG BUTTONS] Rengoku: ATACAR exibido.`, 'color: #00ff00;');
-                    } else { 
-                        this.healButton.classList.remove('hidden');
-                        this.attackButton.classList.add('hidden');
-                        this.addLog(`${clickedCard.name} precisa de outro aliado de Fogo para ativar sua habilidade de ataque. Pode apenas curar.`);
-                        console.log(`%c[DEBUG BUTTONS] Rengoku: CURAR exibido (sem aliado de Fogo).`, 'color: #00ff00;');
-                    }
-                } 
-                // Prioridade 2: Feiticeiros (Sung Jin-woo, Yugi) - N\u00c3O t\u00eam bot\u00f5es de a\u00e7\u00e3o para o jogador clicar
-                else if (clickedCard.type === 'Feiticeiro') { 
-                    this.addLog(`${clickedCard.name} \u00e9 um Feiticeiro. Suas habilidades s\u00e3o passivas ou autom\u00e1ticas.`);
-                    console.log(`%c[DEBUG BUTTONS] Feiticeiro: NENHUM bot\u00e3o exibido.`, 'color: #ffff00;');
-                    this.attackButton.classList.add('hidden'); 
-                    this.healButton.classList.add('hidden');
-                    this.clearSelections(); // Limpa a sele\u00e7\u00e3o, pois n\u00e3o h\u00e1 a\u00e7\u00e3o para o jogador clicar
-                    return; // Sai da fun\u00e7\u00e3o
-                }
-                // Prioridade 3: Outros Healers (Merlin, Julius, Noelle, Tsunade, Akali) - Mostram APENAS CURAR
-                else if (clickedCard.type === 'Healer') { // Inclui Merlin (dark6) e Julius (light5) aqui
-                    this.healButton.classList.remove('hidden');
-                    this.attackButton.classList.add('hidden');
-                    console.log(`%c[DEBUG BUTTONS] Healer comum: CURAR exibido.`, 'color: #00ff00;');
-                } 
-                // Prioridade 4: Qualquer outra carta (Tank, Damage) - Mostram APENAS ATACAR
-                else {
-                    this.attackButton.classList.remove('hidden');
-                    this.healButton.classList.add('hidden');
-                    console.log(`%c[DEBUG BUTTONS] Damage/Tank: ATACAR exibido.`, 'color: #00ff00;');
-                }
-
-            } else { // Uma das 4 condi\u00e7\u00f5es iniciais (dono, n\u00e3o agiu, pode agir, viva) falhou
-                console.log(`%c[DEBUG CLICK] ${clickedCard.name} N\u00c3O passou nas condi\u00e7\u00f5es iniciais. Dono OK? ${isOwner}, N\u00e3o agiu? ${hasNotActed}, Pode agir? ${canPerformAction}, Viva? ${isAlive}`, 'color: darkred;');
-                if (clickedCard.owner !== this.currentPlayerId) {
-                    this.addLog("Voc\u00ea deve selecionar uma de suas pr\u00f3prias cartas para agir.");
-                } else if (clickedCard.hasAttackedThisTurn) {
-                    this.addLog("Esta carta j\u00e1 agiu neste turno.");
-                } else if (!clickedCard.canAttack) {
-                    this.addLog("Esta carta est\u00e1 sob um efeito que impede sua a\u00e7\u00e3o.");
-                } else if (clickedCard.currentLife <= 0) { 
-                    this.addLog("Esta carta est\u00e1 derrotada.");
-                }
-                console.log(`%c[DEBUG BUTTONS] Escondendo bot\u00f5es ap\u00f3s falha inicial.`, 'color: yellow;');
-                this.attackButton.classList.add('hidden'); 
-                this.healButton.classList.add('hidden'); 
-                this.clearSelections(); 
+        if (opponentFrontRow.length > 0) { // Se há Tanks ou cards na linha de frente
+            if (canIgnoreTanks) {
+                isValidTargetForAttack = true; // Atacante ignora Tanks, qualquer inimigo vivo é válido
+                this.addLog(`${this.selectedAttacker.name} ignora a linha de frente.`);
+            } else if (clickedCard.position === 'pos1' || clickedCard.position === 'pos2') {
+                // Atacante não ignora Tanks, e o alvo clicado está na frente
+                isValidTargetForAttack = true;
+            } else {
+                // Atacante não ignora Tanks, e o alvo clicado está na traseira, mas há cartas na frente
+                this.addLog("Você deve atacar as cartas da frente (Tanks ou outros) primeiro.");
+                this.clearSelections();
+                return;
             }
-        } 
-        // Se um atacante j\u00e1 est\u00e1 selecionado, o clique \u00e9 para SELECIONAR um alvo
-        else { 
-            console.log(`%c[DEBUG CLICK] Atacante j\u00e1 selecionado: ${this.selectedAttacker.name}. Selecionando alvo: ${clickedCard.name}.`, 'color: cyan;');
-            // Oculta botões enquanto espera seleção de alvo válida ou ação
-            this.attackButton.classList.add('hidden');
-            this.healButton.classList.add('hidden');
-
-            if (this.selectedAttacker.owner === clickedCard.owner) { 
-                if (this.selectedAttacker.type === 'Healer') { // N\u00e3o precisa mais checar IDs espec\u00edficos aqui, apenas o tipo
-                    if (this.selectedAttacker.id === 'light5') { // Julius tem checagens espec\u00edficas
-                        if (this.selectedAttacker.hasUsedSpecialAbilityOnce) {
-                            this.addLog(`${this.selectedAttacker.name} j\u00e1 usou sua habilidade especial neste jogo.`);
-                            this.clearSelections();
-                            return;
-                        }
-                        const hasNegativeEffects = Object.keys(this.selectedTarget.effectsApplied).some(effectName => ['Amaldi\u00e7oar', 'Queimar', 'Enraizar', 'Atordoar'].includes(effectName));
-                        if (clickedCard.currentLife >= clickedCard.maxLife && !hasNegativeEffects) {
-                            this.addLog(`${clickedCard.name} j\u00e1 tem vida m\u00e1xima e nenhum efeito negativo para Julius Novachrono purificar.`);
-                            this.clearSelections();
-                            return;
-                        }
-                    } 
-                    this.selectedTarget = clickedCard; 
-                    this.addLog(`Voc\u00ea selecionou ${clickedCard.name} como alvo de cura/habilidade.`);
-                    console.log(`%c[DEBUG BUTTONS] Alvo aliado v\u00e1lido. Reexibindo bot\u00f5es.`, 'color: #00ff00;');
-                    this.healButton.classList.remove('hidden'); 
-                    this.attackButton.classList.add('hidden');
-                    this.updateUI();
-                } else { 
-                    this.addLog("Cartas de dano n\u00e3o podem curar aliados.");
-                    this.clearSelections();
-                    console.log(`%c[DEBUG BUTTONS] N\u00e3o Healer, esconde bot\u00f5es.`, 'color: yellow;');
-                }
-            } 
-            else { 
-                if (this.selectedAttacker.type !== 'Healer' || this.selectedAttacker.id === 'fire5') { 
-                    const opponentFrontRow = this.players[this.getOpponent(this.currentPlayerId)].team.filter(c => c.currentLife > 0 && (c.position === 'pos1' || c.position === 'pos2'));
-                    let validTarget = false;
-                    const canIgnoreTanks = (this.selectedAttacker.id === 'water4' || this.selectedAttacker.id === 'dark4' || this.selectedAttacker.id === 'light4'); 
-
-                    if (opponentFrontRow.length > 0) { 
-                        if (canIgnoreTanks) { validTarget = true; } 
-                        else if ((clickedCard.position === 'pos1' || clickedCard.position === 'pos2')) { validTarget = true; } 
-                        else { this.addLog("Voc\u00ea deve atacar as cartas da frente (Tanks) primeiro."); this.clearSelections(); return; }
-                    } else { validTarget = true; }
-
-                    if (validTarget && clickedCard.currentLife > 0) {
-                        this.selectedTarget = clickedCard;
-                        this.addLog(`Voc\u00ea selecionou ${clickedCard.name} como alvo.`);
-                        console.log(`%c[DEBUG BUTTONS] Alvo inimigo v\u00e1lido. Reexibindo bot\u00f5es.`, 'color: #00ff00;');
-                        this.attackButton.classList.remove('hidden'); 
-                        this.healButton.classList.add('hidden');
-                        this.updateUI();
-                    } else if (clickedCard.currentLife <= 0) {
-                        this.addLog("O alvo selecionado j\u00e1 est\u00e1 derrotado.");
-                        this.clearSelections();
-                        console.log(`%c[DEBUG BUTTONS] Alvo derrotado, esconde bot\u00f5es.`, 'color: yellow;');
-                    }
-                } else { 
-                    this.addLog("Esta carta n\u00e3o pode atacar inimigos.");
-                    this.clearSelections();
-                    console.log(`%c[DEBUG BUTTONS] N\u00e3o atacante inimigo, esconde bot\u00f5es.`, 'color: yellow;');
-                }
-            }
+        } else {
+            // Não há cartas na linha de frente, qualquer inimigo vivo é válido
+            isValidTargetForAttack = true;
         }
-    },
+
+        if (isValidTargetForAttack && clickedCard.currentLife > 0) {
+            this.selectedTarget = clickedCard;
+            this.addLog(`Você selecionou ${clickedCard.name} como alvo.`);
+            this.attackButton.classList.remove('hidden'); // Mostra o botão de ATACAR
+            console.log(`%c[DEBUG BUTTONS] Alvo inimigo válido para ataque.`, 'color: #00ff00;');
+        } else {
+            this.addLog("O alvo selecionado já está derrotado ou não é um alvo válido.");
+            this.clearSelections();
+            console.log(`%c[DEBUG BUTTONS] Alvo derrotado ou inválido, deselecionado.`, 'color: yellow;');
+        }
+    }
+    this.updateUI(); // Garante que a UI esteja atualizada com a seleção do alvo
+},
 
    processAction: async function(actionType) {
     try { 
@@ -813,53 +817,62 @@ if (uzuiPlayer2 && uzuiPlayer2.specialEffect && !uzuiPlayer2.hasUsedSpecialAbili
     }
 },
 
- performAttack: async function(attacker, target, isSecondHit = false) {
+performAttack: async function(attacker, target, isSecondHit = false) {
     // 1. Início do Processo de Ataque
-    this.isProcessingAttack = true; // Marca que um ataque está em andamento
-    if (!isSecondHit) { // Se não é o segundo hit do Toji (para não tocar som ou contar ataque duas vezes)
-        this.attackSound.play(); // Toca o som de ataque
-        this.currentDamageDealt = 0; // Reseta o dano causado para este ataque
-        this.attackCountForPlayer[attacker.owner]++; // Incrementa contador de ataque do jogador (para Blastoise)
+    this.isProcessingAttack = true;
+    if (!isSecondHit) {
+        this.attackSound.play();
+        this.currentDamageDealt = 0;
+        this.attackCountForPlayer[attacker.owner]++;
+
+        // --- LÓGICA DO EFEITO PASSIVO DE DRENO DE MEGUMI (dark8) ---
+        // Ativa APENAS UMA VEZ por ataque principal (se não for o segundo hit do Toji)
+        const megumiPlayer1 = this.players.player1.team.find(c => c.id === 'dark8' && c.currentLife > 0);
+        const megumiPlayer2 = this.players.player2.team.find(c => c.id === 'dark8' && c.currentLife > 0);
+
+        if (megumiPlayer1 && megumiPlayer1.specialEffect) {
+            await megumiPlayer1.specialEffect(this, megumiPlayer1, null);
+        }
+        if (megumiPlayer2 && megumiPlayer2.specialEffect) {
+            await megumiPlayer2.specialEffect(this, megumiPlayer2, null);
+        }
     }
 
     // 2. Animação do Atacante
     const attackerElement = document.getElementById(`card-${attacker.id}`);
     if (attackerElement) {
-        attackerElement.style.animation = 'attack-move 0.3s ease-out forwards'; // Inicia animação de ataque
-        await this.sleep(300); // Espera a animação um pouco
+        attackerElement.style.animation = 'attack-move 0.3s ease-out forwards';
+        await this.sleep(300);
     }
 
     // 3. Cálculo do Dano Base
-    // Dano aleatório dentro do range de ataque do atacante, considerando bônus temporários
     let rawDamage = Math.floor(Math.random() * (attacker.attackMax + attacker.tempAttackBonus - (attacker.attackMin + attacker.tempAttackBonus) + 1)) + (attacker.attackMin + attacker.tempAttackBonus);
-    let finalDamage = rawDamage; // Dano que será ajustado pelas habilidades
+    let finalDamage = rawDamage;
 
     // 4. Habilidades Específicas do ATACANTE que MODIFICAM O DANO OU ATAQUE
     let gojoDoubleDamage = false;
-    if (attacker.id === 'light3' && attacker.specialEffect) { // Gojo (Luz): 20% de chance de dobrar o dano
+    if (attacker.id === 'light3' && attacker.specialEffect) {
         const result = await attacker.specialEffect(this, attacker, target);
         if (result === 2) {
             finalDamage *= 2;
-            gojoDoubleDamage = true; // Flag para ignorar multiplicador elemental depois
+            gojoDoubleDamage = true;
         }
     }
 
     let tobiramaBonus = 0;
-    if (attacker.id === 'water3' && attacker.specialEffect) { // Tobirama (Água): Dano extra contra Fogo
+    if (attacker.id === 'water3' && attacker.specialEffect) {
         tobiramaBonus = await attacker.specialEffect(this, attacker, target);
         finalDamage += tobiramaBonus;
     }
 
-    // Might Guy (Terra): Informa quanto de escudo ele ignora. A lógica de ignorar é em dealDamage.
     let ignoredShieldAmount = 0;
     if (attacker.id === 'earth4' && attacker.specialEffect) {
         ignoredShieldAmount = await attacker.specialEffect(this, attacker, target);
     }
-    // Kakashi (Luz): Ignora escudo e esquiva. Lógica de ignorar é em dealDamage.
 
     // 5. Multiplicador Elemental (se Gojo não dobrou o dano)
     let elementalMultiplier = 1;
-    if (!gojoDoubleDamage) { // Se Gojo não dobrou, aplicamos a vantagem elemental
+    if (!gojoDoubleDamage) {
         const attackerElement = attacker.element;
         const targetElement = target.element;
 
@@ -886,7 +899,7 @@ if (uzuiPlayer2 && uzuiPlayer2.specialEffect && !uzuiPlayer2.hasUsedSpecialAbili
     }
     finalDamage = Math.floor(finalDamage * elementalMultiplier);
 
-    // 6. Dano Extra da Partitura (Efeito no ALVO, mas calculado aqui para o total)
+    // 6. Dano Extra da Partitura (Efeito no ALVO)
     if (target.effectsApplied['Partitura']) {
         const extraDamage = target.effectsApplied['Partitura'].value;
         finalDamage += extraDamage;
@@ -894,99 +907,84 @@ if (uzuiPlayer2 && uzuiPlayer2.specialEffect && !uzuiPlayer2.hasUsedSpecialAbili
         console.log(`%c[DEBUG UZUI - PARTITURA] ${target.name} recebeu ${extraDamage} de dano extra da Partitura.`, 'color: #00BFFF;');
     }
     
-    this.currentDamageDealt = finalDamage; // Armazena o dano calculado FINAL (antes da defesa do alvo)
+    this.currentDamageDealt = finalDamage;
 
     // 7. Aplicar Dano ao Alvo (Função dealDamage lida com Escudo, Esquiva, Redução do alvo)
-    // Passamos o atacante para dealDamage para que habilidades como Kakashi possam ignorar defesas.
     await this.dealDamage(target, finalDamage, attacker);
- // --- NOVO: LÓGICA DO EFEITO PASSIVO DE DRENO DE MEGUMI (dark8) ---
-    // Ativa APÓS o dano principal, em cada ataque no jogo
-    // (Apenas se não for um segundo hit do Toji, para não drenar duas vezes por ataque principal)
-    if (!isSecondHit) {
-        const megumiPlayer1 = this.players.player1.team.find(c => c.id === 'dark8' && c.currentLife > 0);
-        const megumiPlayer2 = this.players.player2.team.find(c => c.id === 'dark8' && c.currentLife > 0);
 
-        if (megumiPlayer1 && megumiPlayer1.specialEffect) {
-            // Megumi sempre tenta drenar, não importa quem atacou.
-            // O specialEffect dele já cuida da lógica de dreno.
-            await megumiPlayer1.specialEffect(this, megumiPlayer1, null);
-        }
-        if (megumiPlayer2 && megumiPlayer2.specialEffect) {
-            await megumiPlayer2.specialEffect(this, megumiPlayer2, null);
-        }
-    }
     // 8. Efeitos Pós-Dano no ALVO (reações do ALVO ao receber dano)
-    // Estes efeitos só devem ocorrer se não for um "segundo hit" de habilidades (como Toji).
     if (!isSecondHit) {
-        if (target.id === 'water1' && target.specialEffect) { // Blastoise (Água)
+        if (target.id === 'water1' && target.specialEffect) { // Blastoise
             await target.specialEffect(this, target, target);
         }
-        if (target.id === 'water2' && target.specialEffect) { // Kisame (Água)
+        if (target.id === 'water2' && target.specialEffect) { // Kisame
             await target.specialEffect(this, target, target);
         }
-        if (target.id === 'earth3' && target.specialEffect) { // Edward Elric (Terra)
+        if (target.id === 'earth3' && target.specialEffect) { // Edward Elric
             await target.specialEffect(this, target, target);
         }
-        if (target.id === 'dark2' && target.specialEffect) { // Zeref (Dark)
+        if (target.id === 'dark2' && target.specialEffect) { // Zeref
             await target.specialEffect(this, target, target);
         }
-        if (target.id === 'wind2' && target.specialEffect) { // Aang (Ar)
+        if (target.id === 'wind2' && target.specialEffect) { // Aang
             await target.specialEffect(this, target, target);
         }
     }
     
-
     // 9. Efeitos Pós-Ataque do ATACANTE (habilidades que ativam APÓS o ataque)
-    // Estes efeitos só devem ocorrer se não for um "segundo hit" de habilidades (como Toji).
     if (!isSecondHit) {
-        if (attacker.id === 'fire4' && attacker.specialEffect) { // Roy Mustang (Fogo)
+        if (attacker.id === 'fire4' && attacker.specialEffect) { // Roy Mustang
             await attacker.specialEffect(this, attacker, target);
         }
-        if (attacker.id === 'fire5' && attacker.specialEffect) { // Rengoku (Fogo)
+        if (attacker.id === 'fire5' && attacker.specialEffect) { // Rengoku
             await attacker.specialEffect(this, attacker, target);
         }
-        if (attacker.id === 'wind4' && attacker.specialEffect) { // Minato (Ar)
+        if (attacker.id === 'wind4' && attacker.specialEffect) { // Minato
             await attacker.specialEffect(this, attacker, target);
         }
-        if (attacker.id === 'wind3' && attacker.specialEffect && !this.isTojiSecondHit) { // Toji (Ar): Ataque Duplo
-            this.isTojiSecondHit = true; // Marca para o segundo hit
-            await this.performAttack(attacker, target, true); // Chama a si mesmo para o segundo hit
-            this.isTojiSecondHit = false; // Reseta a flag após o segundo hit
+        if (attacker.id === 'wind3' && attacker.specialEffect && !this.isTojiSecondHit) { // Toji (Ataque Duplo)
+            this.isTojiSecondHit = true;
+            await this.performAttack(attacker, target, true);
+            this.isTojiSecondHit = false;
         }
-        if (attacker.id === 'wind6' && attacker.specialEffect) { // Zoro (Ar): Aumenta ataque a cada golpe
+        if (attacker.id === 'wind6' && attacker.specialEffect) { // Zoro
             await attacker.specialEffect(this, attacker, target);
         }
-        if (attacker.id === 'light7' && attacker.specialEffect) { // Goku (Luz): Kamehameha (Dano em Área)
-            // O specialEffect de Goku já lida com a aplicação de dano a múltiplos alvos.
+        if (attacker.id === 'light7' && attacker.specialEffect) { // Goku (Kamehameha)
             await attacker.specialEffect(this, attacker, target);
         }
-
+        if (attacker.id === 'earth8' && attacker.specialEffect) { // Pain (Shinra Tensei)
+            await attacker.specialEffect(this, attacker, target);
+        }
         // --- ATIVAÇÃO DE ESCANOR E SUKUNA (ATAQUE CONJUNTO) ---
-        // Encontra aliados do atacante que podem atacar junto (Escanor ou Sukuna)
         const potentialJointAttackers = this.getPlayersCards(attacker.owner).filter(c => 
             c.currentLife > 0 &&         // A carta está viva
-            c.id !== attacker.id &&      // Não é o atacante principal que acabou de agir
+            c.id !== attacker.id &&      // Não é o atacante principal
             !c.hasAttackedThisTurn &&    // Não atacou junto ainda neste turno
-            (c.id === 'fire1' || c.id === 'dark7' || c.id === 'water1') // É Escanor ou Sukuna
+            (c.id === 'fire1' || c.id === 'dark7' || c.id === 'fire8') // É Escanor, Sukuna, Sasuke
         );
 
         for (const jointAttacker of potentialJointAttackers) {
             if (jointAttacker.specialEffect) {
-                // Chama o specialEffect da carta.
-                // O specialEffect de Escanor lida com sua chance (50%).
-                // O specialEffect de Sukuna SEMPRE ATIVA (já removemos o Math.random()).
                 const hasAttackedJointly = await jointAttacker.specialEffect(this, jointAttacker, target);
                 if (hasAttackedJointly) {
-                    jointAttacker.hasAttackedThisTurn = true; // Marca o atacante conjunto como tendo agido
+                    jointAttacker.hasAttackedThisTurn = true;
+                    if (jointAttacker.id === 'fire8' && this.sasukeAmaterasuSound) {
+                        this.sasukeAmaterasuSound.play();
+                    }
                 }
             }
         }
-        // --- FIM DA ATIVAÇÃO DE ESCANOR E SUKUNA ---
+        // --- FIM DA ATIVAÇÃO DE ESCANOR, SUKUNA E SASUKE ---
+    }
+    // Habilidade de Sasuke Rinnegan que ataca todos os inimigos (sempre ativa no ataque dele)
+    if (attacker.id === 'sasuke_rinnegan' && attacker.specialEffect) {
+        await attacker.specialEffect(this, attacker, target);
     }
 
     // 10. Finalização da Animação e Limpeza
-    if (attackerElement) { attackerElement.style.animation = ''; } // Remove a animação do atacante
-    this.isProcessingAttack = false; // Marca que o ataque terminou
+    if (attackerElement) { attackerElement.style.animation = ''; }
+    this.isProcessingAttack = false;
 },
     performHeal: async function(healer, target) {
           this.isProcessingHeal = true;
@@ -1052,31 +1050,32 @@ if (uzuiPlayer2 && uzuiPlayer2.specialEffect && !uzuiPlayer2.hasUsedSpecialAbili
 
 // Dentro do objeto 'game' no seu arquivo game.js
 
-   dealDamage: async function(targetCard, amount, attacker = null) {
+  // game.js
+
+// ... (todo o seu código anterior)
+
+ dealDamage: async function(targetCard, amount, attacker = null) {
     let damageToApply = amount;
     let finalDamageReceived = 0;
+    // Esta flag controla se a carta foi "resolvida" (regenerada, transformada, invocada)
+    // e não precisa mais da lógica padrão de "derrotado" no slot DOM.
+    let handledByTransformationOrSummon = false; 
 
     console.log(`%c[DEBUG DEALDAMAGE START] --- Processando Dano ---`, 'background-color: #333; color: white; padding: 2px 5px;');
     console.log(`%c[DEBUG DEALDAMAGE START] Alvo: ${targetCard.name} (HP: ${targetCard.currentLife}/${targetCard.maxLife}), Dano Inicial: ${damageToApply}, Atacante: ${attacker ? attacker.name : 'N/A'}.`, 'color: #ADD8E6;');
 
     // 0. LÓGICA DE REDIRECIONAMENTO DE DANO PARA BAN (water7)
     const banCard = this.players[targetCard.owner].team.find(c => c.id === 'water7' && c.currentLife > 0);
-
     if (targetCard.id !== 'water7' && targetCard.owner === banCard?.owner && banCard && !banCard.hasUsedSpecialAbilityOnce) {
-        console.log(`%c[DEBUG BAN REDIRECT CHECK] Condi\u00e7\u00f5es para redirecionamento do Ban met. Redirecionando dano de ${targetCard.name} para ${banCard.name}.`, 'color: #9370DB;');
-
-        this.addLog(`${banCard.name} (Agua) se interpe e sofre o dano no lugar de ${targetCard.name}!`);
-        console.log(`%c[DEBUG BAN REDIRECT] Dano de ${damageToApply} redirecionado de ${targetCard.name} para ${banCard.name}.`, 'color: #00BFFF;');
-        
+        this.addLog(`${banCard.name} (Agua) se interpõe e sofre o dano no lugar de ${targetCard.name}!`);
         await this.dealDamage(banCard, damageToApply, attacker);
-
         this.reRenderCard(targetCard);
         this.updateUI();
-        console.log(`%c[DEBUG DEALDAMAGE END] Dano redirecionado. Finalizando esta execu\u00e7\u00e3o de dealDamage.`, 'color: #ADD8E6;');
+        console.log(`%c[DEBUG DEALDAMAGE END] Dano redirecionado por Ban. Finalizando esta execução de dealDamage.`, 'color: #ADD8E6;');
         return;
     }
 
-    // 1. ANIMAÇÃO DE DANO RECEBIDO (para o alvo atual)
+    // 1. ANIMAÇÃO DE DANO RECEBIDO
     const currentTargetElement = document.getElementById(`card-${targetCard.id}`);
     if (currentTargetElement && damageToApply > 0) {
         currentTargetElement.style.animation = 'target-hit 0.6s ease-out';
@@ -1084,11 +1083,9 @@ if (uzuiPlayer2 && uzuiPlayer2.specialEffect && !uzuiPlayer2.hasUsedSpecialAbili
         currentTargetElement.style.animation = '';
     }
 
-    // 2. EFEITOS DE DEFESA DO ALVO QUE REDUZEM OU ANULAM DANO ANTES DO ESCUDO
-    // Estes efeitos modificam diretamente 'damageToApply' ou podem retornar
-
+    // 2. EFEITOS DE DEFESA DO ALVO QUE REDUZEM OU ANULAM DANO
     // 2.1. Obito (wind1): 35% de chance de esquivar COMPLETAMENTE
-    if (targetCard.id === 'wind1' && targetCard.specialEffect) {
+    if (targetCard.id === 'wind1' && targetCard.specialEffect && targetCard.currentLife > 0) {
         const obitoDodged = await targetCard.specialEffect(this, targetCard, targetCard);
         if (obitoDodged) {
             this.addLog(`${targetCard.name} (Vento) esquivou completamente do ataque!`);
@@ -1099,42 +1096,58 @@ if (uzuiPlayer2 && uzuiPlayer2.specialEffect && !uzuiPlayer2.hasUsedSpecialAbili
             return;
         }
     }
+    // 2.2. EsquivaChance (Akali - wind5): Ignorado por Kakashi. Se não é Kakashi, chance de esquivar.
+    // Kilua Godspeed (kilua_godspeed) também tem essa passiva
+    if (targetCard.currentLife > 0 && (targetCard.effectsApplied['EsquivaChance'] || targetCard.id === 'kilua_godspeed') && (attacker === null || attacker.id !== 'light4')) {
+        let dodgeChance = 0;
+        if (targetCard.effectsApplied['EsquivaChance']) {
+            dodgeChance = targetCard.effectsApplied['EsquivaChance'].value;
+        } else if (targetCard.id === 'kilua_godspeed' && targetCard.specialEffect) {
+            // Kilua Godspeed tem seu próprio specialEffect para esquiva
+            const kiluaDodged = await targetCard.specialEffect(this, targetCard, targetCard);
+            if (kiluaDodged) {
+                this.addLog(`${targetCard.name} (Vento) esquivou do ataque devido à sua velocidade Godspeed!`);
+                damageToApply = 0;
+                this.reRenderCard(targetCard);
+                this.updateUI();
+                console.log(`%c[DEBUG DEALDAMAGE END] Kilua Godspeed esquivou, dano zerado.`, 'color: #ADD8E6;');
+                return;
+            }
+        }
 
-    // 2.2. EsquivaChance (Akali - wind5): 50% de chance de esquivar
-    if (targetCard.effectsApplied['EsquivaChance'] && (attacker === null || attacker.id !== 'light4') && Math.random() < targetCard.effectsApplied['EsquivaChance'].value) {
-        this.addLog(`${targetCard.name} esquivou do ataque devido ao efeito de Akali!`);
-        damageToApply = 0;
-        delete targetCard.effectsApplied['EsquivaChance'];
-        this.reRenderCard(targetCard);
-        this.updateUI();
-        console.log(`%c[DEBUG DEALDAMAGE END] Akali esquivou, dano zerado.`, 'color: #ADD8E6;');
-        return;
+        if (dodgeChance > 0 && Math.random() < dodgeChance) {
+            this.addLog(`${targetCard.name} esquivou do ataque devido ao efeito de Akali!`);
+            damageToApply = 0;
+            delete targetCard.effectsApplied['EsquivaChance'];
+            this.reRenderCard(targetCard);
+            this.updateUI();
+            console.log(`%c[DEBUG DEALDAMAGE END] Akali esquivou, dano zerado.`, 'color: #ADD8E6;');
+            return;
+        }
     }
 
     // 2.3. Gaara (earth1): 50% de chance de reduzir 5 de dano
-    if (targetCard.id === 'earth1' && targetCard.specialEffect) {
+    if (targetCard.id === 'earth1' && targetCard.specialEffect && targetCard.currentLife > 0) {
         const gaaraReduction = await targetCard.specialEffect(this, targetCard, targetCard);
-        damageToApply = Math.max(0, damageToApply + gaaraReduction); 
         if (gaaraReduction < 0) {
+            damageToApply = Math.max(0, damageToApply + gaaraReduction);
             this.addLog(`${targetCard.name} (Terra) reduziu ${Math.abs(gaaraReduction)} de dano recebido!`);
         }
     }
-
     // 2.4. Hashirama (light1): 50% de chance de reduzir 5 de dano
-    if (targetCard.id === 'light1' && targetCard.specialEffect) {
+    if (targetCard.id === 'light1' && targetCard.specialEffect && targetCard.currentLife > 0) {
         const hashiramaReduction = await targetCard.specialEffect(this, targetCard, targetCard);
-        damageToApply = Math.max(0, damageToApply + hashiramaReduction);
         if (hashiramaReduction < 0) {
+            damageToApply = Math.max(0, damageToApply + hashiramaReduction);
             this.addLog(`${targetCard.name} (Luz) reduziu ${Math.abs(hashiramaReduction)} de dano recebido!`);
         }
     }
-    
+
     // 3. LÓGICA DO ESCUDO
     if (damageToApply > 0 && targetCard.effectsApplied['Escudo'] && targetCard.effectsApplied['Escudo'].value > 0 && (attacker === null || attacker.id !== 'light4')) {
         const shieldValue = targetCard.effectsApplied['Escudo'].value;
         let effectiveShield = shieldValue;
-
-        if (attacker && attacker.id === 'earth4') {
+        if (attacker && attacker.id === 'earth4') { // Might Guy
             const ignoredShield = 10;
             effectiveShield = Math.max(0, shieldValue - ignoredShield);
             if (ignoredShield > 0 && effectiveShield < shieldValue) {
@@ -1146,9 +1159,7 @@ if (uzuiPlayer2 && uzuiPlayer2.specialEffect && !uzuiPlayer2.hasUsedSpecialAbili
             const damageAbsorbedByShield = Math.min(damageToApply, effectiveShield);
             targetCard.effectsApplied['Escudo'].value -= damageAbsorbedByShield;
             damageToApply -= damageAbsorbedByShield;
-
             this.addLog(`${targetCard.name} absorveu ${damageAbsorbedByShield} de dano com seu escudo. Escudo restante: ${targetCard.effectsApplied['Escudo'].value}.`);
-
             if (targetCard.effectsApplied['Escudo'].value <= 0) {
                 delete targetCard.effectsApplied['Escudo'];
                 this.addLog(`O escudo de ${targetCard.name} foi quebrado!`);
@@ -1157,182 +1168,145 @@ if (uzuiPlayer2 && uzuiPlayer2.specialEffect && !uzuiPlayer2.hasUsedSpecialAbili
         }
     }
 
-    // 4. APLICAÇÃO DO DANO RESTANTE NA VIDA
-    const lifeBeforeDamage = targetCard.currentLife; 
+    // 4. APLICAÇÃO DO DANO RESTANTE NA VIDA DA CARTA
+    const lifeBeforeDamage = targetCard.currentLife;
     targetCard.currentLife -= damageToApply;
     if (targetCard.currentLife < 0) targetCard.currentLife = 0;
 
     finalDamageReceived = lifeBeforeDamage - targetCard.currentLife;
 
     this.addLog(`${targetCard.name} recebeu ${finalDamageReceived} de dano na vida. Vida restante: ${targetCard.currentLife}`);
+    // reRenderCard não é chamado aqui para evitar renderização intermediária de carta "morta" antes da transformação/remoção.
 
-    // --- NOVO: LÓGICA DE EXECUÇÃO E TRANSFORMAÇÃO DE KILUA (wind8) ---
-    // Condição ajustada para Kilua executar: Atacante é Kilua, causou dano, e o alvo tem 5 ou menos de vida (incluindo 0).
-    // A transformação Godspeed deve acontecer apenas UMA VEZ por Kilua na partida.
-    if (attacker && attacker.id === 'wind8' && finalDamageReceived > 0 && targetCard.currentLife <= 5) {
-        // Obtenha a instância de Kilua atual no time do jogador (para verificar a flag de transformação)
-        const kiluaCardInTeam = this.players[attacker.owner].team.find(c => c.id === 'wind8' || c.id === 'kilua_godspeed'); // Busca Kilua ou Kilua Godspeed
+    // 5. EFEITOS DE CURA/REFORÇO DO ATACANTE BASEADO NO DANO CAUSADO (Ex: All Might)
+    if (attacker && attacker.id === 'all_might' && attacker.specialEffect && finalDamageReceived > 0) {
+        console.log(`%c[DEBUG ALL MIGHT DEALDAMAGE] All Might (${attacker.name}) causou ${finalDamageReceived} de dano a ${targetCard.name}. Ativando cura!`, 'color: #fbbf24;');
+        const tempCurrentDamageDealt = this.currentDamageDealt;
+        this.currentDamageDealt = finalDamageReceived;
+        await attacker.specialEffect(this, attacker, targetCard);
+        this.currentDamageDealt = tempCurrentDamageDealt;
+        console.log(`%c[DEBUG ALL MIGHT DEALDAMAGE] All Might processou a cura. Sua vida: ${attacker.currentLife}/${attacker.maxLife}.`, 'color: #fbbf24;');
+    }
 
+    // 7. LÓGICA DE EXECUÇÃO E TRANSFORMAÇÃO DE KILUA (wind8)
+    let wasExecutedByKilua = false;
+    if (attacker && attacker.id === 'wind8' && finalDamageReceived > 0 && targetCard.currentLife > 0 && targetCard.currentLife <= 5) {
+        const kiluaCardInTeam = this.players[attacker.owner].team.find(c => c.id === 'wind8');
         if (kiluaCardInTeam && !kiluaCardInTeam.hasUsedTransformationAbilityOnce) {
             this.addLog(`${attacker.name} (Vento) executa ${targetCard.name} com sua passiva de Assassino!`);
-
-            // Força a vida do alvo para 0 para garantir que ele seja considerado derrotado
-            targetCard.currentLife = 0; 
-            this.reRenderCard(targetCard); // Atualiza visualmente a vida para 0
-
-            // Transforma Kilua em Godspeed
-            const playerTeam = this.players[attacker.owner].team;
-            const indexInTeam = playerTeam.findIndex(c => c.id === attacker.id); // Encontra a posição do Kilua atual
-            if (indexInTeam > -1) {
-                const kiluaGodspeed = new Card(
-                    kiluaGodspeedCardData.id,
-                    kiluaGodspeedCardData.name,
-                    kiluaGodspeedCardData.type,
-                    kiluaGodspeedCardData.attackRange,
-                    kiluaGodspeedCardData.maxLife,
-                    kiluaGodspeedCardData.element,
-                    kiluaGodspeedCardData.effectDescription,
-                    kiluaGodspeedCardData.specialEffect
-                );
-                kiluaGodspeed.owner = attacker.owner;
-                kiluaGodspeed.position = attacker.position;
-                // Importante: Marcar a habilidade de transformação como usada
-                kiluaGodspeed.hasUsedTransformationAbilityOnce = true; 
-                playerTeam[indexInTeam] = kiluaGodspeed; // Substitui Kilua por Godspeed
-
-                this.addLog(`${attacker.name} se transforma em ${kiluaGodspeed.name}!`);
-                this.reRenderCard(kiluaGodspeed); // Atualiza a UI para mostrar Godspeed
-            }
-            this.updateUI();
-            // A carta executada será tratada como derrotada no bloco 6.
+            targetCard.currentLife = 0;
+            await this.transformKiluaToGodspeed(kiluaCardInTeam);
+            wasExecutedByKilua = true;
+            handledByTransformationOrSummon = true;
         } else {
-             // Kilua já usou a transformação nesta partida. Ele ainda causa o dano normal, mas não executa.
-             // O dano já foi aplicado e logado, então não precisa de mais ação aqui.
-             console.log(`%c[DEBUG KILUA] Kilua não executou, pois a transformação já foi usada.`, 'color: grey;');
+            console.log(`%c[DEBUG KILUA] Kilua não executou (já transformou ou não é Kilua).`, 'color: grey;');
         }
     }
-    // --- FIM DA LÓGICA DE KILUA ---
 
-
-    // 5. EFEITOS PÓS-DANO (reações do ALVO ao receber dano na vida)
-    // Estes efeitos só ativam se a carta recebeu dano real na vida (finalDamageReceived > 0)
-    // E se a carta *não foi morta pela execução do Kilua* ou se ela ainda está viva.
-
-    // A flag 'wasExecutedByKilua' deve ser verificada APÓS a lógica de Kilua
-    let wasExecutedByKilua = (attacker && attacker.id === 'wind8' && targetCard.currentLife === 0 && finalDamageReceived > 0);
-
+    // 8. EFEITOS PÓS-DANO NO ALVO (reações do ALVO ao receber dano na vida)
     if (!wasExecutedByKilua && targetCard.currentLife > 0 && finalDamageReceived > 0) {
-        // 5.1. Luffy (earth6): Aumenta ataque se receber dano
-        if (targetCard.id === 'earth6' && targetCard.specialEffect) {
-            await targetCard.specialEffect(this, targetCard, null);
-        }
-        // 5.2. Vegeta (fire7): Diminui ataque do inimigo que o atacar
-        if (targetCard.id === 'fire7' && targetCard.specialEffect) {
-            await targetCard.specialEffect(this, targetCard, attacker);
-        }
-        // 5.3. Edward Elric (earth3): Atacante recebe dano
-        if (targetCard.id === 'earth3' && targetCard.specialEffect) {
-            await targetCard.specialEffect(this, targetCard, targetCard);
-        }
-        // 5.4. Zeref (dark2): Amaldiçoa o inimigo que o atacar
-        if (targetCard.id === 'dark2' && targetCard.specialEffect) {
-            await targetCard.specialEffect(this, targetCard, targetCard);
-        }
-        // 5.5. Kisame (water2): Inflige 5 de dano sempre que recebe dano
-        if (targetCard.id === 'water2' && targetCard.specialEffect) {
-            await targetCard.specialEffect(this, targetCard, targetCard);
-        }
-        // 5.6. Aang (wind2): Redireciona 50% do dano para outro inimigo aleatório
-        if (targetCard.id === 'wind2' && targetCard.specialEffect) {
-            await targetCard.specialEffect(this, targetCard, targetCard);
-        }
+        if (targetCard.id === 'earth6' && targetCard.specialEffect) { await targetCard.specialEffect(this, targetCard, null); } // Luffy
+        if (targetCard.id === 'fire7' && targetCard.specialEffect) { await targetCard.specialEffect(this, targetCard, attacker); } // Vegeta
+        if (targetCard.id === 'earth3' && targetCard.specialEffect) { await targetCard.specialEffect(this, targetCard, attacker); } // Edward Elric
+        if (targetCard.id === 'dark2' && targetCard.specialEffect) { await targetCard.specialEffect(this, targetCard, attacker); } // Zeref
+        if (targetCard.id === 'water2' && targetCard.specialEffect) { await targetCard.specialEffect(this, targetCard, attacker); } // Kisame
+        if (targetCard.id === 'wind2' && targetCard.specialEffect) { await targetCard.specialEffect(this, targetCard, targetCard); } // Aang
     }
 
-
-    // 6. VERIFICAÇÃO DE DERROTA E TRANSFORMAÇÕES/INVOCAÇÕES/EFEITOS DE MORTE
+    // 9. VERIFICAÇÃO DE DERROTA E EFEITOS DE MORTE/INVOCAÇÕES/REGENERAÇÕES FINAIS
     if (targetCard.currentLife <= 0) {
-        this.addLog(`${targetCard.name} foi derrotado!`);
-        this.isCardDefeated = true;
-
-        let actionTakenAfterDefeat = false;
-
-        // 6.1. Lógica de REGENERAÇÃO DO BAN (water7)
-        if (targetCard.id === 'water7' && targetCard.specialEffect && !targetCard.hasUsedSpecialAbilityOnce) {
-            console.log(`%c[DEBUG BAN REGEN] Ban (${targetCard.name}) foi derrotado, ativando regenera\u00e7\u00e3o...`, 'color: #00BFFF;');
-            const abilityActivated = await targetCard.specialEffect(this, targetCard, null);
-            if (abilityActivated) {
-                this.addLog(`${targetCard.name} se regenerou completamente e permanece no campo!`);
-                this.reRenderCard(targetCard);
-                actionTakenAfterDefeat = true;
-            }
-        }
-
-        // 6.2. Lógica de TRANSFORMAÇÃO DO GON (earth7)
-        if (!actionTakenAfterDefeat && targetCard.id === 'earth7' && targetCard.specialEffect) {
-            this.addLog(`O poder de ${targetCard.name} explode! Ele se transforma em ${gonAdultoCardData.name}!`);
-
-            if (this.gonTransformSound) {
-                this.gonTransformSound.play();
-            }
-
-            const gonAdulto = new Card(
-                gonAdultoCardData.id,
-                gonAdultoCardData.name,
-                gonAdultoCardData.type,
-                gonAdultoCardData.attackRange,
-                gonAdultoCardData.maxLife,
-                gonAdultoCardData.element,
-                gonAdultoCardData.effectDescription,
-                gonAdultoCardData.specialEffect
-            );
-            gonAdulto.owner = targetCard.owner;
-            gonAdulto.position = targetCard.position;
-
-            const playerTeam = this.players[targetCard.owner].team;
-            const indexInTeam = playerTeam.findIndex(c => c.id === targetCard.id);
-            if (indexInTeam > -1) {
-                playerTeam[indexInTeam] = gonAdulto;
-            }
-
-            this.reRenderCard(gonAdulto);
-            actionTakenAfterDefeat = true;
-            console.log(`%c[DEBUG GON ADULTO] ${gonAdulto.name} transformado e posicionado!`, 'color: #00ff00; font-weight: bold;');
+        this.isCardDefeated = true; // Sinaliza que uma carta foi derrotada
+        
+        // Lógica de TRANSFORMAÇÃO DO GON (earth7) - Prioridade para transformar
+        console.log(`%c[DEBUG DEALDAMAGE] Verificando transformação de Gon... targetCard: ${targetCard.name}, ID: ${targetCard.id}`, 'color: #DAA520;');
+        if (targetCard.id === 'earth7' && !targetCard.hasUsedTransformationAbilityOnce) {
+             console.log(`%c[DEBUG DEALDAMAGE] Condições para transformação de Gon atendidas. Chamando transformGonToAdult.`, 'color: #DAA520;');
+             const transformed = await this.transformGonToAdult(targetCard);
+             if (transformed) {
+                 handledByTransformationOrSummon = true;
+                 console.log(`%c[DEBUG DEALDAMAGE] Gon (criança) foi derrotado e transformado com sucesso. handledByTransformationOrSummon = true.`, 'color: green; font-weight: bold;');
+             } else {
+                 console.log(`%c[DEBUG DEALDAMAGE] transformGonToAdult retornou FALSE. Gon não transformou.`, 'color: red;');
+             }
+        } else {
+            console.log(`%c[DEBUG DEALDAMAGE] Gon não se transformará. ID: ${targetCard.id}, Já usada: ${targetCard.hasUsedTransformationAbilityOnce}`, 'color: #DAA520;');
         }
         
-        // 6.3. Lógica de INVOCAÇÃO (Igris, Mago Negro)
-        let summoned = false; // Flag local para esta seção
-        if (!actionTakenAfterDefeat) {
-            // Remover a carta derrotada do array 'team' SE ELA AINDA ESTIVER LÁ.
-            const playerTeam = this.players[targetCard.owner].team;
-            const indexInTeam = playerTeam.findIndex(c => c.id === targetCard.id);
-            if (indexInTeam > -1) {
-                playerTeam.splice(indexInTeam, 1);
+        // Se a carta original foi derrotada E NÃO FOI TRATADA POR UMA TRANSFORMAÇÃO/INVOCAÇÃO ATÉ AQUI
+        if (!handledByTransformationOrSummon) {
+            // Lógica de REGENERAÇÃO DO BAN (water7)
+            if (targetCard.id === 'water7' && targetCard.specialEffect && !targetCard.hasUsedSpecialAbilityOnce) {
+                console.log(`%c[DEBUG BAN REGEN] Ban (${targetCard.name}) foi derrotado, ativando regenera\u00e7\u00e3o...`, 'color: #00BFFF;');
+                const abilityActivated = await targetCard.specialEffect(this, targetCard, null);
+                if (abilityActivated) {
+                    this.addLog(`${targetCard.name} se regenerou completamente e permanece no campo!`);
+                    handledByTransformationOrSummon = true;
+                }
             }
 
-            // Prioridade: Yugi (Mago Negro) primeiro
-            const yugiInTeam = this.players[targetCard.owner].team.some(c => (c.id === 'light6' || c.id === 'yami_yugi') && c.currentLife > 0);
-            if (yugiInTeam) {
-                console.log(`%c[DEBUG DEALDAMAGE - INVOCAR] Yugi est\u00e1 presente. Tentando invocar Mago Negro.`, 'color: #008080;');
-                summoned = await this.summonMagoNegro(targetCard);
-                if (summoned) actionTakenAfterDefeat = true;
-            }
+            // Lógica de INVOCAÇÃO POR FEITICEIROS AO TER ALIADO DERROTADO
+            if (!handledByTransformationOrSummon) {
+                // Lógica de invocação de Mahoraga (por Megumi)
+                const allRemainingPlayersCards = this.getPlayersCards(targetCard.owner);
+                const megumiDying = (targetCard.id === 'dark8');
 
-            // Se Mago Negro não foi invocado, tenta Sung Jin-woo (Igris)
-            if (!actionTakenAfterDefeat) {
-                const sungJinWooInTeam = this.players[targetCard.owner].team.find(c => c.id === 'dark5' && c.currentLife > 0);
-                if (sungJinWooInTeam) {
-                    console.log(`%c[DEBUG DEALDAMAGE - INVOCAR] Sung Jin-woo est\u00e1 presente. Tentando invocar Igris.`, 'color: #008080;');
-                    summoned = await this.summonIgris(targetCard);
-                    if (summoned) actionTakenAfterDefeat = true;
-                } else {
-                    console.log(`%c[DEBUG DEALDAMAGE - INVOCAR] Nenhum feiticeiro presente para invocar.`, 'color: orange;');
+                if (megumiDying && allRemainingPlayersCards.length === 0 && !targetCard.hasUsedSpecialAbilityOnce) {
+                    this.addLog(`${targetCard.name} (Dark) é o \u00fanico sobrevivente e foi derrotado! Ele se sacrifica para invocar o General Mahoraga!`);
+                    await this.summonMahoraga(targetCard);
+                    targetCard.hasUsedSpecialAbilityOnce = true;
+                    handledByTransformationOrSummon = true;
+                }
+
+                // Prioridade: Yugi (Mago Negro)
+                if (!handledByTransformationOrSummon) {
+                    const yugiInTeam = this.players[targetCard.owner].team.find(c => (c.id === 'light6' || c.id === 'yami_yugi') && c.currentLife > 0);
+                    if (yugiInTeam && !yugiInTeam.hasUsedSummonAbilityOnce) {
+                        console.log(`%c[DEBUG DEALDAMAGE - INVOCAR] Yugi está presente. Tentando invocar Mago Negro.`, 'color: #008080;');
+                        const summonedSuccessfully = await this.summonMagoNegro(targetCard);
+                        if (summonedSuccessfully) {
+                            handledByTransformationOrSummon = true;
+                        }
+                    }
+                }
+
+                // Sung Jin-woo (Igris)
+                if (!handledByTransformationOrSummon) {
+                    const sungJinWooInTeam = this.players[targetCard.owner].team.find(c => c.id === 'dark5' && c.currentLife > 0);
+                    if (sungJinWooInTeam && !sungJinWooInTeam.hasUsedSpecialAbilityOnce) {
+                        console.log(`%c[DEBUG DEALDAMAGE - INVOCAR] Sung Jin-woo está presente. Tentando invocar Igris.`, 'color: #008080;');
+                        const summonedSuccessfully = await this.summonIgris(targetCard);
+                        if (summonedSuccessfully) {
+                            handledByTransformationOrSummon = true;
+                        } else if (sungJinWooInTeam && sungJinWooInTeam.hasUsedSpecialAbilityOnce) {
+                            console.log(`%c[DEBUG SUNG JIN-WOO - SUMMON] Sung Jin-woo j\u00e1 usou sua habilidade de invoca\u00e7\u00e3o.`, 'color: #ff00ff;');
+                        }
+                    }
                 }
             }
         }
+        
+        // --- Processamento de Efeitos "On-Death" e Remoção Final ---
 
-        // 6.4. Enviar para a LIXEIRA e Mostrar Overlay "DERROTADO"
-        if (!actionTakenAfterDefeat) {
+        // LÓGICA DO LEVI (water8) - Ativa quando QUALQUER ALIADO morre
+        const leviInTeam = this.players[targetCard.owner].team.find(c => c.id === 'water8' && c.currentLife > 0);
+        if (leviInTeam && leviInTeam.specialEffect && targetCard.owner === leviInTeam.owner) {
+            console.log(`%c[DEBUG DEALDAMAGE - LEVI] Levi está presente no time de ${targetCard.owner} e ${targetCard.name} morreu. Ativando habilidade.`, 'color: #3b82f6;');
+            await leviInTeam.specialEffect(this, leviInTeam, targetCard);
+        }
+
+        // EFEITOS DE MORTE DE OUTRAS CARTAS (ativam ao morrer)
+        if (!handledByTransformationOrSummon) {
+            if (targetCard.id === 'fire3' && targetCard.specialEffect) { // Deidara
+                await targetCard.specialEffect(this, targetCard, targetCard);
+            }
+        }
+
+        // REMOÇÃO VISUAL FINAL DA CARTA DERROTADA (COM OVERLAY "DERROTADO")
+        // Este bloco SÓ deve executar se a carta NÃO foi regenerada, transformada ou invocada.
+        if (!handledByTransformationOrSummon) {
+            this.removeCardFromBattlefield(targetCard);
             this.playerDefeatedCard(targetCard);
+
             const slotOfDefeatedCard = this.getBattlefieldSlot(targetCard.owner, targetCard.position);
             if (slotOfDefeatedCard) {
                 slotOfDefeatedCard.innerHTML = '';
@@ -1341,31 +1315,17 @@ if (uzuiPlayer2 && uzuiPlayer2.specialEffect && !uzuiPlayer2.hasUsedSpecialAbili
                 defeatedOverlay.textContent = 'DERROTADO';
                 slotOfDefeatedCard.appendChild(defeatedOverlay);
             }
-        }
-
-        // 6.5. EFEITOS DE MORTE DE OUTRAS CARTAS (ativam ao morrer)
-        if (!actionTakenAfterDefeat) {
-            if (targetCard.id === 'fire3' && targetCard.specialEffect) { // Deidara
-                await targetCard.specialEffect(this, targetCard, targetCard);
-            }
+            this.addLog(`${targetCard.name} foi removido do campo.`);
         }
         
         this.isCardDefeated = false;
     } else {
+        // Se a carta não foi derrotada, apenas re-renderiza para atualizar vida/efeitos
+        console.log(`%c[DEBUG DEALDAMAGE] Carta não derrotada. Re-renderizando ${targetCard.name}.`, 'color: #6A5ACD;');
         this.reRenderCard(targetCard);
     }
-    
-    // 7. ATUALIZAÇÃO FINAL DA UI
-    // --- NOVO: CHECAGEM DA PASSIVA DE KILUA APÓS TODO O DANO E MORTES ---
-    // Faz a checagem para AMBOS os jogadores, pois o dano pode ter vindo de qualquer um.
-    await this.checkAndExecuteKiluaPassive(this.players.player1.name === this.players.player1.name ? 'player1' : 'player2'); // Checa para player1
-    await this.checkAndExecuteKiluaPassive(this.players.player2.name === this.players.player2.name ? 'player2' : 'player1'); // Checa para player2
-    // A condição `this.players.playerX.name === this.players.playerX.name` é sempre verdadeira.
-    // O correto seria passar 'player1' ou 'player2' diretamente.
 
-    await this.checkAndExecuteKiluaPassive('player1'); // Checa Kilua do Jogador 1
-    await this.checkAndExecuteKiluaPassive('player2'); // Checa Kilua do Jogador 2
-
+    // 10. ATUALIZAÇÃO FINAL DA UI
     this.updateUI();
     console.log(`%c[DEBUG DEALDAMAGE END] --- Fim do Processamento de Dano ---`, 'background-color: #333; color: white; padding: 2px 5px;');
 },
@@ -1443,29 +1403,28 @@ if (uzuiPlayer2 && uzuiPlayer2.specialEffect && !uzuiPlayer2.hasUsedSpecialAbili
     },
 
   reRenderCard: function(card) {
-    console.log(`%c[DEBUG RENDER] Tentando re-renderizar a carta: ${card.name} (ID: ${card.id})`, 'color: yellowgreen;');
-    console.log(`%c[DEBUG RENDER] Efeitos no momento da renderiza\u00e7\u00e3o para ${card.name}:`, 'color: yellowgreen;', card.effectsApplied);
+    console.log(`%c[DEBUG RENDER] Tentando re-renderizar a carta: ${card.name} (ID: ${card.id}), Proprietário: ${card.owner}, Posição: ${card.position}`, 'color: yellowgreen; font-weight: bold;');
+    console.log(`%c[DEBUG RENDER] Efeitos no momento da renderização para ${card.name}:`, 'color: yellowgreen;', card.effectsApplied);
     const slotElement = this.getBattlefieldSlot(card.owner, card.position);
 
     if (slotElement) {
-        console.log(`%c[DEBUG RENDER] Slot encontrado para ${card.name}: ${slotElement.id}`, 'color: yellowgreen;');
+        console.log(`%c[DEBUG RENDER] Slot DOM encontrado: ${slotElement.id}. Limpando...`, 'color: yellowgreen;');
 
-        // REMOVIDO: slotElement.style.border = '3px solid red';
+        // Limpa o conteúdo anterior do slot
+        slotElement.innerHTML = ''; 
 
-        slotElement.innerHTML = ''; // Limpa o slot
-        console.log(`%c[DEBUG RENDER] Slot ${slotElement.id} limpo.`, 'color: yellowgreen;');
-
-        // Cria o novo elemento da carta para ser inserido
-        const newCardElement = card.render(false, true, 
-            this.selectedAttacker && this.selectedAttacker.id === card.id, 
+        // Cria o novo elemento da carta
+        const newCardElement = card.render(false, true,
+            this.selectedAttacker && this.selectedAttacker.id === card.id,
             this.selectedTarget && this.selectedTarget.id === card.id);
 
-        slotElement.appendChild(newCardElement); // Insere o novo HTML da carta
-        console.log(`%c[DEBUG RENDER] Novo elemento da carta ${card.name} inserido no slot ${slotElement.id}.`, 'color: #00ff00; font-weight: bold;');
+        // Adiciona o novo elemento da carta ao slot
+        slotElement.appendChild(newCardElement);
+        console.log(`%c[DEBUG RENDER] Novo elemento de <span class="math-inline">\{card\.name\} \(</span>{card.id}) INSERIDO no slot ${slotElement.id}.`, 'color: #00ff00; font-weight: bold;');
 
-        // REMOVIDO: setTimeout para limpar estilo
     } else {
-        console.error(`%c[DEBUG RENDER] ERRO: Slot n\u00e3o encontrado para re-renderizar a carta: ${card.name} (Owner: ${card.owner}, Pos: ${card.position})`, 'color: red; background-color: yellow;');
+        // Este erro é CRÍTICO. Indica que a posição da carta não corresponde a um slot DOM válido.
+        console.error(`%c[DEBUG RENDER] ERRO CRÍTICO: Slot DOM NÃO ENCONTRADO para re-renderizar a carta: ${card.name} (Owner: ${card.owner}, Pos: ${card.position}). A carta pode não aparecer no campo.`, 'color: white; background-color: red; padding: 5px;');
     }
 },
 
@@ -1526,6 +1485,21 @@ if (uzuiPlayer2 && uzuiPlayer2.specialEffect && !uzuiPlayer2.hasUsedSpecialAbili
 
             this.updateUI(); // Atualiza a UI para remover Megumi e mostrar Mahoraga
             // Não retorna aqui, pois o jogo precisa verificar o próximo turno.
+        }
+         // --- NOVO: LÓGICA DE TRANSFORMAÇÃO DO SASUKE (fire8) ---
+         for (const playerId in this.players) {
+            const currentPlayerCards = this.getPlayersCards(playerId);
+            const sasukeCard = currentPlayerCards.find(c => c.id === 'fire8' && c.currentLife > 0);
+
+            // Se Sasuke está vivo no time, e ele é o único aliado vivo, e não usou a habilidade de transformação ainda.
+            if (sasukeCard && currentPlayerCards.length === 1 && !sasukeCard.hasUsedTransformationAbilityOnce) {
+                this.addLog(`${sasukeCard.name} (Fogo) é o único sobrevivente! Ele recebe o Rinnegan e se transforma!`);
+                
+                await this.transformSasukeToRinnegan(sasukeCard);
+
+                this.updateUI(); // Atualiza a UI para mostrar a transformação
+                // Não retorna aqui, o turno deve continuar normalmente após a transformação
+            }
         }
     }
 
@@ -1637,18 +1611,17 @@ if (uzuiPlayer2 && uzuiPlayer2.specialEffect && !uzuiPlayer2.hasUsedSpecialAbili
 
     // Novas mecanicas
 
-summonIgris: function(defeatedCard) {
+summonIgris: async function(defeatedCard) {
     console.log(`%c[DEBUG SUNG JIN-WOO - SUMMON] Tentando invocar Igris para ${defeatedCard.name}.`, 'color: #8a2be2;');
 
-    try { 
+    try {
         const sungJinWooCard = this.players[defeatedCard.owner].team.find(c => c.id === 'dark5' && c.currentLife > 0);
 
         if (sungJinWooCard && !sungJinWooCard.hasUsedSpecialAbilityOnce) {
-            console.log(`%c[DEBUG SUNG JIN-WOO - SUMMON] Sung Jin-woo (%c${sungJinWooCard.name}%c) ativo e habilidade n\u00e3o usada.`, 'color: #8a2be2;', 'color: yellow;', 'color: #8a2be2;');
+            console.log(`%c[DEBUG SUNG JIN-WOO - SUMMON] Sung Jin-woo (%c${sungJinWooCard.name}%c) ativo e habilidade não usada.`, 'color: #8a2be2;', 'color: yellow;', 'color: #8a2be2;');
 
-            // Cria uma nova instância da carta Igris (agora 'igrisCardData' é acessível)
             const Igris = new Card(
-                igrisCardData.id, // Não tem 'game.' na frente agora
+                igrisCardData.id,
                 igrisCardData.name,
                 igrisCardData.type,
                 igrisCardData.attackRange,
@@ -1658,9 +1631,12 @@ summonIgris: function(defeatedCard) {
                 igrisCardData.specialEffect
             );
             Igris.owner = defeatedCard.owner;
-            Igris.position = defeatedCard.position; 
+            Igris.position = defeatedCard.position; // Igris ocupa a posição da carta derrotada
 
-            // A defeatedCard já foi removida do array 'team' em dealDamage
+            // Remove a carta derrotada do array 'team' ANTES de adicionar Igris.
+            // Esta remoção aqui é NECESSÁRIA porque `dealDamage` só remove se !handledByTransformationOrSummon.
+            // Para invocações, a carta derrotada PRECISA ser removida do array antes.
+            this.removeCardFromBattlefield(defeatedCard); 
 
             this.players[defeatedCard.owner].team.push(Igris); // Adiciona Igris ao time
             sungJinWooCard.hasUsedSpecialAbilityOnce = true; // Marca a habilidade de Sung Jin-woo como usada
@@ -1668,31 +1644,30 @@ summonIgris: function(defeatedCard) {
             this.addLog(`${sungJinWooCard.name} (Dark) invocou ${Igris.name} no lugar de ${defeatedCard.name}!`);
             console.log(`%c[DEBUG SUNG JIN-WOO - SUMMON] ${Igris.name} invocado!`, 'color: #00ff00; font-weight: bold;');
             this.reRenderCard(Igris); // Re-renderiza a carta Igris na posição
-            this.updateUI(); // Atualiza a UI geral
-            return true; 
+            // Não chame updateUI aqui, será chamado no final de dealDamage
+            return true;
         } else {
-            console.log(`%c[DEBUG SUNG JIN-WOO - SUMMON] Sung Jin-woo n\u00e3o ativo ou habilidade j\u00e1 usada.`, 'color: #ff00ff;'); 
+            console.log(`%c[DEBUG SUNG JIN-WOO - SUMMON] Sung Jin-woo não ativo ou habilidade já usada.`, 'color: #ff00ff;');
         }
         return false;
     } catch (error) {
         console.error(`%c[ERRO SUNG JIN-WOO INVOCAÇÃO] Erro inesperado:`, 'color: white; background-color: red; padding: 5px;', error);
-        this.addLog(`ERRO na invoca\u00e7\u00e3o do Sung Jin-woo: ${error.message}`);
+        this.addLog(`ERRO na invocação do Sung Jin-woo: ${error.message}`);
         return false;
     }
 },
 
 // js/game.js - SUBSTITUA A FUNÇÃO summonMagoNegro INTEIRA E COMPLETA
 
-summonMagoNegro: async function(defeatedCard) { // Adicione 'async' aqui, se ainda não estiver
-    console.log(`%c[DEBUG YUGI - SUMMON] Tentando invocar Mago Negro para ${defeatedCard.name}.`, 'color: #008080;'); // Teal
+summonMagoNegro: async function(defeatedCard) {
+    console.log(`%c[DEBUG YUGI - SUMMON] Tentando invocar Mago Negro para ${defeatedCard.name}.`, 'color: #008080;');
 
-    try { 
+    try {
         const yugiCard = this.players[defeatedCard.owner].team.find(c => (c.id === 'light6' || c.id === 'yami_yugi') && c.currentLife > 0);
 
         if (yugiCard && !yugiCard.hasUsedSummonAbilityOnce) {
-            console.log(`%c[DEBUG YUGI - SUMMON] Yugi (%c${yugiCard.name}%c) ativo e habilidade de invoca\u00e7\u00e3o n\u00e3o usada.`, 'color: #008080;', 'color: yellow;', 'color: #008080;');
+            console.log(`%c[DEBUG YUGI - SUMMON] Yugi (%c${yugiCard.name}%c) ativo e habilidade de invocação não usada.`, 'color: #008080;', 'color: yellow;', 'color: #008080;');
 
-            // >>> ESTE É O CÓDIGO DE CRIAÇÃO DO MAGO NEGRO QUE ESTAVA FALTANDO <<<
             const MagoNegro = new Card(
                 magoNegroCardData.id,
                 magoNegroCardData.name,
@@ -1706,31 +1681,30 @@ summonMagoNegro: async function(defeatedCard) { // Adicione 'async' aqui, se ain
             MagoNegro.owner = defeatedCard.owner;
             MagoNegro.position = defeatedCard.position; // Mago Negro ocupa a posição da carta derrotada
 
-            // Adiciona Mago Negro ao time
-            this.players[defeatedCard.owner].team.push(MagoNegro); 
-            // >>> FIM DO CÓDIGO DE CRIAÇÃO <<<
+            // Remove a carta derrotada do array 'team' ANTES de adicionar Mago Negro.
+            this.removeCardFromBattlefield(defeatedCard);
 
-            yugiCard.hasUsedSummonAbilityOnce = true; // Marca a habilidade de Yugi como usada
+            this.players[defeatedCard.owner].team.push(MagoNegro);
+            yugiCard.hasUsedSummonAbilityOnce = true;
 
             this.addLog(`${yugiCard.name} invocou o ${MagoNegro.name} no lugar de ${defeatedCard.name}!`);
             console.log(`%c[DEBUG YUGI - SUMMON] ${MagoNegro.name} invocado!`, 'color: #00ff00; font-weight: bold;');
 
-            this.reRenderCard(MagoNegro); // Re-renderiza a carta Mago Negro na posição
+            this.reRenderCard(MagoNegro);
 
-            // Ativa o efeito on-summon do Mago Negro imediatamente aqui
             if (MagoNegro.specialEffect) {
-                await MagoNegro.specialEffect(this, MagoNegro, null); 
+                await MagoNegro.specialEffect(this, MagoNegro, null);
             }
 
-            this.updateUI(); 
-            return true; 
+            // Não chame updateUI aqui, será chamado no final de dealDamage
+            return true;
         } else {
-            console.log(`%c[DEBUG YUGI - SUMMON] Yugi n\u00e3o ativo ou habilidade de invoca\u00e7\u00e3o j\u00e1 usada.`, 'color: #ff00ff;'); 
+            console.log(`%c[DEBUG YUGI - SUMMON] Yugi não ativo ou habilidade de invocação já usada.`, 'color: #ff00ff;');
         }
         return false;
     } catch (error) {
-        console.error(`%c[ERRO MAGO NEGRO INVOCA\u00c7\u00c3O] Erro inesperado:`, 'color: white; background-color: red; padding: 5px;', error);
-        this.addLog(`ERRO na invoca\u00e7\u00e3o do Mago Negro: ${error.message}`);
+        console.error(`%c[ERRO MAGO NEGRO INVOCAÇÃO] Erro inesperado:`, 'color: white; background-color: red; padding: 5px;', error);
+        this.addLog(`ERRO na invocação do Mago Negro: ${error.message}`);
         return false;
     }
 },
@@ -1773,20 +1747,23 @@ summonMahoraga: async function(sacrificedCard) { // Recebe a carta sacrificada (
     }
 },
 transformKiluaToGodspeed: async function(kiluaCardInstance) {
+    console.log(`%c[DEBUG KILUA TRANSF] INICIO - Tentando transformar ${kiluaCardInstance.name} (ID: ${kiluaCardInstance.id}, Pos: ${kiluaCardInstance.position}, Owner: ${kiluaCardInstance.owner}). Já usada: ${kiluaCardInstance.hasUsedTransformationAbilityOnce}`, 'color: #00CED1; font-weight: bold;');
+
     if (!kiluaCardInstance || kiluaCardInstance.id !== 'wind8' || kiluaCardInstance.hasUsedTransformationAbilityOnce) {
-        return false; // Não é Kilua ou já transformou
+        console.warn(`%c[DEBUG KILUA TRANSF] Falha na validação para transformar Kilua.`, 'color: orange;');
+        return false;
     }
 
-    this.addLog(`${kiluaCardInstance.name} (Vento) atinge seu limite e se transforma em ${kiluaGodspeedCardData.name}!`);
-    // Tocar som de transformação (se tiver um para Kilua)
-    if (this.kiluaTransformSound) { // Assumindo que você adicionou kiluaTransformSound no game.init()
+    if (this.kiluaTransformSound) {
         this.kiluaTransformSound.play();
     } else {
-        console.warn("Som de transforma\u00e7\u00e3o do Kilua n\u00e3o configurado.");
+        console.warn("Som de transformação do Kilua não configurado.");
     }
 
     const playerTeam = this.players[kiluaCardInstance.owner].team;
     const indexInTeam = playerTeam.findIndex(c => c.id === kiluaCardInstance.id);
+
+    console.log(`%c[DEBUG KILUA TRANSF] Index de Kilua no time: ${indexInTeam}`, 'color: #00CED1;');
 
     if (indexInTeam > -1) {
         const kiluaGodspeed = new Card(
@@ -1801,13 +1778,77 @@ transformKiluaToGodspeed: async function(kiluaCardInstance) {
         );
         kiluaGodspeed.owner = kiluaCardInstance.owner;
         kiluaGodspeed.position = kiluaCardInstance.position;
-        kiluaGodspeed.hasUsedTransformationAbilityOnce = true; // Marca como usada na nova instância
+        kiluaGodspeed.hasUsedTransformationAbilityOnce = true;
 
-        playerTeam[indexInTeam] = kiluaGodspeed; // Substitui no time
-        this.reRenderCard(kiluaGodspeed); // Renderiza a nova carta
-        this.updateUI();
+        kiluaGodspeed.currentLife = kiluaCardInstance.currentLife; // Mantém a vida atual
+        if (kiluaGodspeed.currentLife > kiluaGodspeed.maxLife) {
+            kiluaGodspeed.currentLife = kiluaGodspeed.maxLife; // Ajusta se a vida exceder a nova máxima
+        }
+
+        console.log(`%c[DEBUG KILUA TRANSF] Substituindo Kilua Base por Kilua Godspeed no array do time. Antigo: ${kiluaCardInstance.id}, Novo: ${kiluaGodspeed.id}`, 'color: #32CD32;');
+        playerTeam[indexInTeam] = kiluaGodspeed; // SUBSTITUIÇÃO NO ARRAY
+
+        this.addLog(`${kiluaCardInstance.name} (Vento) atinge seu limite e se transforma em ${kiluaGodspeed.name}!`);
+        console.log(`%c[DEBUG KILUA TRANSF] Chamando reRenderCard para Kilua Godspeed (ID: ${kiluaGodspeed.id}, Pos: ${kiluaGodspeed.position})...`, 'color: #1E90FF;');
+        this.reRenderCard(kiluaGodspeed); // Renderiza a NOVA carta
+
+        console.log(`%c[DEBUG KILUA TRANSF] FIM - Transformação de Kilua para Godspeed CONCLUÍDA.`, 'color: #008000; font-weight: bold;');
         return true;
     }
+    console.warn(`%c[DEBUG KILUA TRANSF] Erro: Kilua original não encontrado no time (${kiluaCardInstance.owner}) na posição ${kiluaCardInstance.position} para transformação.`, 'color: red;');
+    return false;
+},
+ // --- NOVA FUNÇÃO: transformSasukeToRinnegan ---
+    transformSasukeToRinnegan: async function(sasukeCardInstance) {
+    console.log(`%c[DEBUG SASUKE TRANSF] INICIO - Tentando transformar ${sasukeCardInstance.name} (ID: ${sasukeCardInstance.id}, Pos: ${sasukeCardInstance.position}, Owner: ${sasukeCardInstance.owner}). Já usada: ${sasukeCardInstance.hasUsedTransformationAbilityOnce}`, 'color: #8A2BE2; font-weight: bold;');
+
+    if (!sasukeCardInstance || sasukeCardInstance.id !== 'fire8' || sasukeCardInstance.hasUsedTransformationAbilityOnce) {
+        console.warn(`%c[DEBUG SASUKE TRANSF] Falha na validação para transformar Sasuke.`, 'color: orange;');
+        return false;
+    }
+
+    if (this.transformationSound) { // Reutilizando o som de transformação genérico
+        this.transformationSound.play();
+    } else {
+        console.warn("Som de transformação não configurado para Sasuke Rinnegan.");
+    }
+
+    const playerTeam = this.players[sasukeCardInstance.owner].team;
+    const indexInTeam = playerTeam.findIndex(c => c.id === sasukeCardInstance.id);
+
+    console.log(`%c[DEBUG SASUKE TRANSF] Index de Sasuke no time: ${indexInTeam}`, 'color: #8A2BE2;');
+
+    if (indexInTeam > -1) {
+        const sasukeRinnegan = new Card(
+            sasukeRinneganCardData.id,
+            sasukeRinneganCardData.name,
+            sasukeRinneganCardData.type,
+            sasukeRinneganCardData.attackRange,
+            sasukeRinneganCardData.maxLife,
+            sasukeRinneganCardData.element,
+            sasukeRinneganCardData.effectDescription,
+            sasukeRinneganCardData.specialEffect
+        );
+        sasukeRinnegan.owner = sasukeCardInstance.owner;
+        sasukeRinnegan.position = sasukeCardInstance.position;
+        sasukeRinnegan.hasUsedTransformationAbilityOnce = true;
+
+        sasukeRinnegan.currentLife = sasukeCardInstance.currentLife; // Mantém a vida atual
+        if (sasukeRinnegan.currentLife > sasukeRinnegan.maxLife) {
+            sasukeRinnegan.currentLife = sasukeRinnegan.maxLife;
+        }
+
+        console.log(`%c[DEBUG SASUKE TRANSF] Substituindo Sasuke Base por Sasuke Rinnegan no array do time. Antigo: ${sasukeCardInstance.id}, Novo: ${sasukeRinnegan.id}`, 'color: #32CD32;');
+        playerTeam[indexInTeam] = sasukeRinnegan; // SUBSTITUIÇÃO NO ARRAY
+
+        this.addLog(`${sasukeCardInstance.name} (Fogo) é o único sobrevivente! Ele recebe o Rinnegan e se transforma!`);
+        console.log(`%c[DEBUG SASUKE TRANSF] Chamando reRenderCard para Sasuke Rinnegan (ID: ${sasukeRinnegan.id}, Pos: ${sasukeRinnegan.position})...`, 'color: #1E90FF;');
+        this.reRenderCard(sasukeRinnegan); // Renderiza a NOVA carta
+
+        console.log(`%c[DEBUG SASUKE TRANSF] FIM - Transformação de Sasuke para Rinnegan CONCLUÍDA.`, 'color: #008000; font-weight: bold;');
+        return true;
+    }
+    console.warn(`%c[DEBUG SASUKE TRANSF] Erro: Sasuke original não encontrado no time (${sasukeCardInstance.owner}) na posição ${sasukeCardInstance.position} para transformação.`, 'color: red;');
     return false;
 },
 checkAndExecuteKiluaPassive: async function(playerToCheckId) {
@@ -1842,5 +1883,146 @@ checkAndExecuteKiluaPassive: async function(playerToCheckId) {
         }
     }
     return false; // Nenhuma execução ocorreu
+},
+transformToshinoriToAllMight: async function(toshinoriCardInstance) {
+    console.log(`%c[DEBUG ALL MIGHT TRANSF] INICIO - Tentando transformar ${toshinoriCardInstance.name} (ID: ${toshinoriCardInstance.id}, Pos: ${toshinoriCardInstance.position}, Owner: ${toshinoriCardInstance.owner}). Já usada: ${toshinoriCardInstance.hasUsedTransformationAbilityOnce}`, 'color: #FFD700; font-weight: bold;');
+
+    if (!toshinoriCardInstance || toshinoriCardInstance.id !== 'light8' || toshinoriCardInstance.hasUsedTransformationAbilityOnce) {
+        console.warn(`%c[DEBUG ALL MIGHT TRANSF] Falha na validação para transformar Toshinori Yagi.`, 'color: orange;');
+        return false;
+    }
+
+    if (this.allMightTransformSound) {
+        this.allMightTransformSound.play();
+    } else {
+        console.warn("Som de transformação não configurado para Toshinori Yagi.");
+    }
+
+    const playerTeam = this.players[toshinoriCardInstance.owner].team;
+    const indexInTeam = playerTeam.findIndex(c => c.id === toshinoriCardInstance.id);
+
+    console.log(`%c[DEBUG ALL MIGHT TRANSF] Index de Toshinori no time: ${indexInTeam}`, 'color: #FFD700;');
+
+    if (indexInTeam > -1) {
+        const allMight = new Card(
+            allMightCardData.id,
+            allMightCardData.name,
+            allMightCardData.type,
+            allMightCardData.attackRange,
+            allMightCardData.maxLife,
+            allMightCardData.element,
+            allMightCardData.effectDescription,
+            allMightCardData.specialEffect
+        );
+        allMight.owner = toshinoriCardInstance.owner;
+        allMight.position = toshinoriCardInstance.position;
+        allMight.hasUsedTransformationAbilityOnce = true;
+
+        allMight.currentLife = toshinoriCardInstance.currentLife;
+        if (allMight.currentLife > allMight.maxLife) {
+            allMight.currentLife = allMight.maxLife;
+        }
+
+        console.log(`%c[DEBUG ALL MIGHT TRANSF] Substituindo Toshinori Yagi por All Might no array do time. Antigo: ${toshinoriCardInstance.id}, Novo: ${allMight.id}`, 'color: #32CD32;');
+        playerTeam[indexInTeam] = allMight; // SUBSTITUIÇÃO NO ARRAY
+
+        this.addLog(`${toshinoriCardInstance.name} (Luz) despertou seu verdadeiro poder e se transforma em ${allMight.name}!`);
+        console.log(`%c[DEBUG ALL MIGHT TRANSF] Chamando reRenderCard para All Might (ID: ${allMight.id}, Pos: ${allMight.position})...`, 'color: #1E90FF;');
+        this.reRenderCard(allMight); // Renderiza a NOVA carta
+
+        console.log(`%c[DEBUG ALL MIGHT TRANSF] FIM - Transformação de Toshinori Yagi para All Might CONCLUÍDA.`, 'color: #008000; font-weight: bold;');
+        return true;
+    }
+    console.warn(`%c[DEBUG ALL MIGHT TRANSF] Erro: Toshinori Yagi original não encontrado no time (${toshinoriCardInstance.owner}) na posição ${toshinoriCardInstance.position} para transformação.`, 'color: red;');
+    return false;
+},
+
+// Modifique a função applyEffect existente:
+applyEffect: function(card, effectName, turns, value) {
+    console.log(`%c[DEBUG EFFECTS] Tentando aplicar efeito '${effectName}' a ${card.name}.`, 'color: #4682B4;');
+    let finalTurns = turns;
+    if (effectName === 'Escudo' || effectName === 'Partitura') {
+        finalTurns = -1; // -1 significa "dura para sempre"
+    }
+
+    const isDebuff = ['Amaldiçoar', 'Queimar', 'Enraizar', 'Atordoar', 'Partitura'].includes(effectName);
+
+    // Lógica para Toshinori Yagi (light8)
+    const toshinoriInTeam = this.players[card.owner].team.find(c => c.id === 'light8' && c.currentLife > 0);
+
+    if (isDebuff && toshinoriInTeam && !toshinoriInTeam.hasUsedTransformationAbilityOnce) {
+        this.addLog(`${toshinoriInTeam.name} (Luz) passivamente removeu o efeito '${effectName}' de ${card.name}!`);
+        delete card.effectsApplied[effectName]; // Remove o debuff
+        if (effectName === 'Amaldiçoar' || effectName === 'Enraizar' || effectName === 'Atordoar') {
+            card.canAttack = true; // Permite atacar novamente
+        }
+        this.reRenderCard(card); // Re-renderiza o aliado para mostrar a remoção do debuff
+
+        // ATENÇÃO: Chama a transformação de Toshinori após remover o debuff
+        this.transformToshinoriToAllMight(toshinoriInTeam);
+
+        console.log(`%c[DEBUG TOSHINORI YAGI] Efeito '${effectName}' removido de ${card.name} por ${toshinoriInTeam.name}.`, 'color: #fbbf24;');
+        return; // Sai da função, o efeito não é aplicado
+    }
+
+    // Se não foi removido por Toshinori ou ele já transformou, aplica o efeito normalmente
+    card.effectsApplied[effectName] = { turns: finalTurns, value: value };
+    if (effectName === 'Amaldiçoar' || effectName === 'Enraizar' || effectName === 'Atordoar') {
+        card.canAttack = false;
+    }
+    console.log(`%c[DEBUG EFFECTS] Efeito '${effectName}' aplicado a ${card.name}. Turnos: ${finalTurns}, Valor: ${value}. Estado atual:`, 'color: #4682B4;', card.effectsApplied);
+    this.reRenderCard(card);
+    this.updateUI();
+},
+transformGonToAdult: async function(gonCardInstance) {
+    console.log(`%c[DEBUG GON TRANSF] INICIO - Tentando transformar ${gonCardInstance.name} (ID: ${gonCardInstance.id}, Pos: ${gonCardInstance.position}, Owner: ${gonCardInstance.owner}). Já usada: ${gonCardInstance.hasUsedTransformationAbilityOnce}`, 'color: #FFD700; font-weight: bold;');
+
+    if (!gonCardInstance || gonCardInstance.id !== 'earth7' || gonCardInstance.hasUsedTransformationAbilityOnce) {
+        console.warn(`%c[DEBUG GON TRANSF] Falha na validação para transformar Gon.`, 'color: orange;');
+        return false;
+    }
+
+    // Tocar som de transformação do Gon
+    if (this.gonTransformSound) {
+        this.gonTransformSound.play();
+    } else {
+        console.warn("Som de transformação do Gon não configurado.");
+    }
+
+    const playerTeam = this.players[gonCardInstance.owner].team;
+    const indexInTeam = playerTeam.findIndex(c => c.id === gonCardInstance.id);
+
+    console.log(`%c[DEBUG GON TRANSF] Index de Gon no time: ${indexInTeam}`, 'color: #FFD700;');
+
+    if (indexInTeam > -1) {
+        const gonAdulto = new Card(
+            gonAdultoCardData.id,
+            gonAdultoCardData.name,
+            gonAdultoCardData.type,
+            gonAdultoCardData.attackRange,
+            gonAdultoCardData.maxLife,
+            gonAdultoCardData.element,
+            gonAdultoCardData.effectDescription,
+            gonAdultoCardData.specialEffect
+        );
+        gonAdulto.owner = gonCardInstance.owner;
+        gonAdulto.position = gonCardInstance.position;
+        gonAdulto.hasUsedTransformationAbilityOnce = true;
+        gonAdulto.currentLife = gonAdulto.maxLife; // Assume vida cheia ao transformar, se preferir o comportamento original, mude para gonCardInstance.currentLife
+
+        console.log(`%c[DEBUG GON TRANSF] Substituindo Gon Criança por Gon Adulto no array do time. Antigo: ${gonCardInstance.id}, Novo: ${gonAdulto.id}`, 'color: #32CD32;');
+        playerTeam[indexInTeam] = gonAdulto; // SUBSTITUIÇÃO CRUCIAL NO ARRAY
+
+        gonCardInstance.hasUsedTransformationAbilityOnce = true; // Garante que a referência antiga não possa reativar
+        this.addLog(`O poder de ${gonCardInstance.name} explode! Ele se transforma em ${gonAdulto.name}!`);
+
+        console.log(`%c[DEBUG GON TRANSF] Chamando reRenderCard para Gon Adulto (ID: ${gonAdulto.id}, Pos: ${gonAdulto.position})...`, 'color: #1E90FF;');
+        this.reRenderCard(gonAdulto); // Renderiza a NOVA carta (Gon Adulto) no slot
+
+        console.log(`%c[DEBUG GON TRANSF] FIM - Transformação de Gon para Adulto CONCLUÍDA.`, 'color: #008000; font-weight: bold;');
+        return true;
+    }
+    console.warn(`%c[DEBUG GON TRANSF] Erro: Gon original não encontrado no time (${gonCardInstance.owner}) na posição ${gonCardInstance.position} para transformação.`, 'color: red;');
+    return false;
 },
 };

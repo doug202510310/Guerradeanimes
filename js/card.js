@@ -203,6 +203,21 @@ new Card('water7', 'Ban', 'Tank', [2, 4], 40, 'Agua', 'Agua: Ele sofre dano no l
         }
         return false; // Regeneração não ativada
     }),
+    new Card('water8', 'Levi', 'Damage', [12, 14], 22, 'Agua', 'Agua: Sempre que um aliado morre, Levi ganha 5-5 de ataque permanentemente.', async (game, self, defeatedAlly) => {
+        // Este specialEffect será chamado em game.dealDamage quando um aliado de Levi for derrotado.
+        console.log(`%c[DEBUG LEVI] Habilidade de Levi (Vingança) verificada. Aliado derrotado: %c${defeatedAlly.name}%c.`, 'color: #3b82f6;', 'color: yellow;', 'color: #3b82f6;'); // Azul para Água
+
+        // Garante que é Levi e que o aliado derrotado pertence ao mesmo jogador que Levi
+        if (self.currentLife > 0 && defeatedAlly && defeatedAlly.owner === self.owner) {
+            self.attackMin += 5;
+            self.attackMax += 5;
+            game.addLog(`${self.name} (Agua) ganhou +5 de ataque porque ${defeatedAlly.name} foi derrotado! Novo ATK: ${self.attackMin}-${self.attackMax}.`);
+            console.log(`%c[DEBUG LEVI] Ataque de Levi aumentado para: %c${self.attackMin}-${self.attackMax}`, 'color: #3b82f6;', 'color: yellow;');
+            game.updateUI(); // Atualiza a UI para refletir o novo ataque
+            return true;
+        }
+        return false;
+    }, 'img/water8.png'),
 
     // Fogo
     new Card('fire1', 'Escanor', 'Tank', [3, 5], 42, 'Fogo', 'Fogo: Tem 50% de chance de atacar junto de outra criatura atacante.', async (game, self, target) => {
@@ -331,7 +346,27 @@ new Card('water7', 'Ban', 'Tank', [2, 4], 40, 'Agua', 'Agua: Ele sofre dano no l
     }
     return false;
 }, 'img/fire7.png'), // Certifique-se de ter 'img/fire7.png'
+ new Card('fire8', 'Sasuke', 'Feiticeiro', [5, 7], 30, 'Fogo', 'Fogo: Passivo: Quando um aliado ataca, ele ataca junto com o Amaterasu causando 5 de dano. Se ele é o único aliado vivo, recebe o Rinnegan e se transforma.', async (game, self, target) => {
+        // A lógica do ataque conjunto e da transformação será tratada no game.js para melhor controle do fluxo.
+        // Este specialEffect pode ser chamado para ambos os propósitos dependendo do contexto.
 
+        // Lógica para o ataque conjunto (Amaterasu):
+        // Será ativado em game.performAttack após um aliado atacar.
+        if (game.isProcessingAttack && game.selectedAttacker && game.selectedAttacker.owner === self.owner && game.selectedAttacker.id !== self.id) {
+            // Removi a flag hasAttackedThisTurn daqui para simplificar, 
+            // e vamos gerenciar isso puramente em game.js no loop de atacantes conjuntos.
+            // Isso evita que a flag seja setada antes mesmo de verificar se ele é um jointAttacker válido.
+            game.addLog(`${self.name} (Fogo) ataca junto com Amaterasu!`);
+            await game.dealDamage(target, 5, self); // Causa 5 de dano ao alvo do aliado
+            // game.updateUI(); // Não chame updateUI aqui, será chamado no final de performAttack
+            return true; // Indica que o Amaterasu foi ativado
+        }
+
+        // Lógica para a transformação (será chamada em game.endTurn, mas o efeito principal está lá):
+        // Esta parte do specialEffect aqui é mais para documentação e se houver alguma lógica interna do card.js.
+        // A transformação principal é acionada em game.js.
+        return false;
+    },'img/fire8.png'),
 
     // Terra
     new Card('earth1', 'Gaara', 'Tank', [1, 3], 45, 'Terra', 'Terra: Quando Gaara recebe dano, ele tem 50% de chance de reduzir esse dano em 5.', async (game, self, target) => {
@@ -420,6 +455,67 @@ new Card('earth7', 'Gon', 'Damage', [5, 6], 15, 'Terra', 'Terra: Ao ser derrotad
         }
         return false;
     }, 'img/earth7.png'), // Certifique-se de ter 'img/earth7.png'
+
+    new Card('earth8', 'Pain', 'Damage', [6, 8], 22, 'Terra', 'Terra: Ataca todos os inimigos com seu Shinra Tensei.', async (game, self, target) => {
+        // Este specialEffect será chamado quando Pain for selecionado para atacar.
+        // Ele vai aplicar dano a TODOS os inimigos.
+        console.log(`%c[DEBUG PAIN] Habilidade de Pain (Shinra Tensei) ativada!`, 'color: #8B4513; font-weight: bold;'); // Marrom para Terra
+
+        // Garante que é Pain e que ele está atacando
+        if (game.isProcessingAttack && self.id === game.selectedAttacker.id) {
+            game.addLog(`${self.name} (Terra) lança seu Shinra Tensei em todos os inimigos!`);
+
+            // Tocar o som do Shinra Tensei (se você tiver um arquivo de áudio para isso)
+            if (game.shinraTenseiSound) { // Verifique se game.shinraTenseiSound existe no game.init()
+                game.shinraTenseiSound.play();
+            } else {
+                console.warn("Som do Shinra Tensei não configurado.");
+            }
+
+            const opponentCards = game.getPlayersCards(game.getOpponent(self.owner)).filter(c => c.currentLife > 0);
+
+            if (opponentCards.length > 0) {
+                for (const enemy of opponentCards) {
+                    // O dano para cada inimigo será dentro do range de ataque de Pain
+                    let damageToEnemy = Math.floor(Math.random() * (self.attackMax - self.attackMin + 1)) + self.attackMin;
+
+                    // Aplicar multiplicador elemental
+                    let elementalMultiplier = 1;
+                    const attackerElement = self.element; // 'Terra'
+                    const targetElement = enemy.element;
+
+                    const elementalAdvantages = { 'Fogo': 'Ar', 'Ar': 'Terra', 'Terra': 'Agua', 'Agua': 'Fogo' };
+                    const darkLightAdvantage = { 'Dark': 'Luz', 'Luz': 'Dark' };
+
+                    if (elementalAdvantages[attackerElement] === targetElement) {
+                        elementalMultiplier = 1.5;
+                        game.addLog(`\u00a0\u00a0Vantagem elemental contra ${enemy.name}!`);
+                    } else if (elementalAdvantages[targetElement] === attackerElement) {
+                        elementalMultiplier = 1 / 1.5;
+                        game.addLog(`\u00a0\u00a0Desvantagem elemental contra ${enemy.name}!`);
+                    } else if (darkLightAdvantage[attackerElement] === targetElement) {
+                        elementalMultiplier = 1.5;
+                        game.addLog(`\u00a0\u00a0Vantagem ofensiva contra ${enemy.name}!`);
+                    } else if (darkLightAdvantage[targetElement] === attackerElement) {
+                        elementalMultiplier = 1 / 1.5;
+                        game.addLog(`\u00a0\u00a0Desvantagem ofensiva contra ${enemy.name}!`);
+                    }
+                    damageToEnemy = Math.floor(damageToEnemy * elementalMultiplier);
+
+                    await game.dealDamage(enemy, damageToEnemy, self); // Passa 'self' como atacante
+                    game.addLog(`\u00a0\u00a0${enemy.name} recebeu ${damageToEnemy} de dano do Shinra Tensei!`);
+                    console.log(`%c[DEBUG PAIN] ${enemy.name} atingido por ${damageToEnemy} de dano.`, 'color: #8B4513;');
+                }
+                game.updateUI(); // Atualiza a UI após todos os danos
+                return true;
+            } else {
+                game.addLog(`${self.name} (Terra) não encontrou inimigos para atingir com Shinra Tensei.`);
+                console.log(`%c[DEBUG PAIN] Nenhum inimigo para Shinra Tensei.`, 'color: #8B4513;');
+            }
+        }
+        console.log(`%c[DEBUG PAIN] Habilidade não ativada (não é Pain atacando).`, 'color: #8B4513;');
+        return false;
+    }, 'img/earth8.png'),
 
     // Vento
     new Card('wind1', 'Obito', 'Tank', [2, 4], 47, 'Ar', 'Ar: Obito tem 35% de chance de esquivar de qualquer ataque recebido, não sofrendo dano.', async (game, self, target) => {
@@ -673,46 +769,17 @@ new Card('dark6', 'Merlin', 'Healer', [11, 12], 30, 'Dark', 'Dark: Para curar um
         return false;
     }, 'img/dark7.png'), // Certifique-se de ter 'img/dark7.png'
 new Card('dark8', 'Megumi', 'Feiticeiro', [5, 7], 30, 'Dark', 'Dark: Passivo: Sempre que um ataque acontece (aliado ou inimigo), Megumi drena 1 de vida de todos os inimigos. Se for o único aliado vivo, se sacrifica para invocar Mahoraga.', async (game, self, target) => {
-        // Este specialEffect será ativado em dois cenários:
-        // 1. Passivo de dreno: Chamado em game.performAttack (para drenar)
-        // 2. Sacrifício/Invocação: Chamado em game.endTurn (para checar "último vivo")
+    // Este specialEffect será ativado em dois cenários:
+    // 1. Passivo de dreno: Chamado em game.performAttack (para drenar)
+    // 2. Sacrifício/Invocação: Chamado em game.endTurn (para checar "último vivo")
 
-        // Lógica para o efeito de dreno passivo (quando self.id === game.selectedAttacker.id não será o caso)
-        // Mas esta função será chamada para Megumi a cada ataque.
-        if (game.isProcessingAttack && game.selectedAttacker) { // Garante que um ataque está acontecendo
-            // Verifica se a habilidade de dreno de Megumi já foi ativada para este ataque
-            // Poderíamos adicionar uma flag para isso, mas o ideal é que seja chamado pelo performAttack
-            // Uma flag no Megumi, tipo self.hasDrainedThisAttack, seria mais robusta,
-            // mas vamos confiar no fluxo de performAttack para chamar uma vez.
-            
-            game.addLog(`${self.name} (Dark) ativa seu dreno passivo!`);
-            
-            // Tocar som do Megumi (opcional)
-            if (game.megumiSound) {
-                game.megumiSound.play();
-            } else {
-                console.warn("Som do Megumi não configurado.");
-            }
-
-            const opponentCards = game.getPlayersCards(game.getOpponent(self.owner)).filter(c => c.currentLife > 0);
-            const drainAmount = 1;
-
-            if (opponentCards.length > 0) {
-                for (const enemy of opponentCards) {
-                    game.dealDamage(enemy, drainAmount, self); // Megumi causa 1 de dano a cada inimigo
-                    game.addLog(`  ${enemy.name} sofreu ${drainAmount} de dano do dreno de Megumi.`);
-                }
-                game.updateUI(); // Atualiza a UI após os drenos
-                return true; // Indica que o dreno foi ativado
-            }
-            return false; // Ninguém para drenar
-        }
-
-        // A lógica de sacrifício/invocação de Mahoraga será tratada em 'game.endTurn' ou 'game.dealDamage'.
-        // O specialEffect de Megumi não será o responsável direto por essa ativação,
-        // mas o Mahoraga terá seu próprio specialEffect para o dano on-summon.
-        return false;
-    }, 'img/dark8.png'),
+    // Lógica para o efeito de dreno passivo
+    if (game.isProcessingAttack && game.selectedAttacker) { // Garante que um ataque está acontecendo
+        // ... (lógica de dreno de 1 de vida de todos os inimigos) ...
+        return true; // Indica que o dreno foi ativado
+    }
+    return false; // Ninguém para drenar ou não é o momento do dreno
+}, 'img/dark8.png'),
 
 new Card('light1', 'Hashirama', 'Tank', [2, 4], 50, 'Luz', 'Luz: Quando Hashirama recebe dano, ele tem 50% de chance de reduzir esse dano em 5.', async (game, self, target) => {
     if (game.isProcessingAttack && self.id === target.id && Math.random() < 0.50) {
@@ -784,49 +851,79 @@ new Card('light2', 'Naruto', 'Tank', [4, 5], 52, 'Luz', 'Luz: No início do turn
         return false; 
     }),
     new Card('light6', 'Yugi Muto', 'Feiticeiro', [5, 7], 33, 'Luz', 'Luz: Ao iniciar a batalha, se transforma em Faraó Yami Yugi (muda imagem/nome) e concede 5 de vida máxima ao Tank aliado. Habilidade passiva: Ao ter um aliado derrotado, invoca o Mago Negro (ATK 5-7, VIDA 15, Dark, causa 7 de dano aos inimigos da fileira de trás) no lugar dele (uma vez por partida).', async (game, self, target) => {
-    // Este specialEffect ser\u00e1 APENAS para a transforma\u00e7\u00e3o e o buff de vida no Tank (ativa\u00e7\u00e3o: in\u00edcio da batalha)
-    console.log(`%c[DEBUG YUGI - EFFECT] Habilidade de Feiticeiro (TRANSFORMAÇÃO + BUFF TANK) verificada. Dono: %c${self.owner}%c, Vida: %c${self.currentLife}`, 'color: gold;', 'color: yellow;', 'color: gold;', 'color: yellow;');
+    // === LÓGICA DE TRANSFORMAÇÃO E BUFF NO INÍCIO DA BATALHA ===
+    // Esta parte do specialEffect de Yugi é ativada no INÍCIO DA BATALHA (startBattlePhase).
+    // Ela deve se ativar apenas UMA VEZ por partida.
 
-    if (game.currentPhase === 'battle' && self.currentLife > 0 && !self.hasUsedSpecialAbilityOnce) { // Ativa só uma vez por partida
-        console.log(`%c[DEBUG YUGI - EFFECT] Condi\u00e7\u00f5es TRANSFORMAÇÃO + BUFF TANK s\u00e3o VERDADEIRAS!`, 'color: gold;');
+    // A flag `hasUsedTransformationAbilityOnce` controla se a transformação já ocorreu.
+    // A flag `hasUsedSummonAbilityOnce` controla a invocação do Mago Negro.
+    // O `target` para esta parte da habilidade será `null`.
 
-        // 1. Transforma\u00e7\u00e3o
-        self.name = 'Faraó Yami Yugi [Dark]'; // Muda o nome da carta
-        self.id = 'yami_yugi'; // Muda o ID para uma nova imagem (você precisa de img/yami_yugi.png)
-        self.element = 'Dark'; // Ele se torna Dark ap\u00f3s a transforma\u00e7\u00e3o (se quiser)
-        game.addLog(`${self.name} se transformou em Fara\u00f3 Yami Yugi e muda seu elemento para Dark!`);
+    console.log(`%c[DEBUG YUGI - HABILIDADE INÍCIO BATALHA] Verificando habilidade de Yugi Muto (${self.owner}).`, 'color: gold;');
 
-        // Tocar som de transforma\u00e7\u00e3o (você precisar\u00e1 de um arquivo de \u00e1udio, ex: 'audio/transformation.mp3')
-        if (game.transformationSound) { // Verifique se o som est\u00e1 definido em game.init()
-            game.transformationSound.play();
+    // Condição para ativar a transformação:
+    // 1. A fase atual é 'battle' (confirma que estamos na batalha e não em outro contexto).
+    // 2. A carta Yugi está viva.
+    // 3. A habilidade de transformação AINDA NÃO FOI USADA nesta partida.
+    // (A habilidade de invocação de Mago Negro é uma passiva separada, gerenciada em `dealDamage`).
+    if (game.currentPhase === 'battle' && self.currentLife > 0 && !self.hasUsedTransformationAbilityOnce) {
+        console.log(`%c[DEBUG YUGI - HABILIDADE INÍCIO BATALHA] Condições de transformação atendidas para ${self.name}.`, 'color: gold;');
+
+        // Tocar som de transformação ESPECÍFICO do Faraó Yugi
+        if (game.yugiFaraoTransformSound) {
+            game.yugiFaraoTransformSound.play();
         } else {
-            console.warn("Som de transforma\u00e7\u00e3o n\u00e3o configurado.");
+            console.warn("Som de transformação do Faraó Yugi não configurado. Verifique 'audio/transformation_farao.mp3' e game.init().");
         }
 
-        // 2. Concede vida m\u00e1xima ao Tank aliado
+        // 1. TRANSFORMAÇÃO: Mudar nome, ID (para nova imagem) e elemento
+        self.name = 'Faraó Yami Yugi [Dark]';
+        self.id = 'yami_yugi'; // Certifique-se de ter 'img/yami_yugi.png'
+        self.element = 'Dark'; // Yami Yugi geralmente é associado ao elemento Dark
+
+        game.addLog(`${self.name} se transformou em Faraó Yami Yugi e mudou seu elemento para Dark!`);
+
+        // 2. CONCEDER VIDA MÁXIMA AO TANK ALIADO
         const tankAllies = game.getPlayersCards(self.owner).filter(c => c.type === 'Tank' && c.id !== self.id && c.currentLife > 0);
-        console.log(`%c[DEBUG YUGI - EFFECT] Aliados Tank encontrados: %c${tankAllies.map(c => c.name).join(', ') || 'Nenhum'}`, 'color: gold;', 'color: yellow;');
+
+        console.log(`%c[DEBUG YUGI - BUFF TANK] Aliados Tank encontrados para ${self.owner}: ${tankAllies.map(c => c.name).join(', ') || 'Nenhum'}`, 'color: gold;');
 
         if (tankAllies.length > 0) {
-            const targetTank = tankAllies.sort((a, b) => (a.currentLife / a.maxLife) - (b.currentLife / b.maxLife))[0]; 
-            targetTank.maxLife += 5; // Aumenta a vida m\u00e1xima
-            targetTank.currentLife += 5; // Cura tamb\u00e9m, para n\u00e3o ficar com vida desproporcional
-            game.addLog(`${self.name} concedeu 5 de vida m\u00e1xima a ${targetTank.name} (Tank)!`);
-            console.log(`%c[DEBUG YUGI - EFFECT] ${targetTank.name} ganhou 5 de vida m\u00e1xima.`, 'color: gold;');
+            // Seleciona o tank aliado mais ferido (com menor porcentagem de vida)
+            const targetTank = tankAllies.sort((a, b) => (a.currentLife / a.maxLife) - (b.currentLife / b.maxLife))[0];
+
+            targetTank.maxLife += 5;   // Aumenta a vida máxima
+            targetTank.currentLife += 5; // Cura também para não ficar com vida desproporcional à nova máxima
+            if (targetTank.currentLife > targetTank.maxLife) { // Garante que não exceda a nova vida máxima
+                targetTank.currentLife = targetTank.maxLife;
+            }
+
+            game.addLog(`${self.name} concedeu 5 de vida máxima a ${targetTank.name} (Tank)!`);
+            console.log(`%c[DEBUG YUGI - BUFF TANK] ${targetTank.name} ganhou 5 de vida máxima. Nova vida: ${targetTank.currentLife}/${targetTank.maxLife}.`, 'color: gold;');
         } else {
-            game.addLog(`${self.name} n\u00e3o encontrou Tank aliado para conceder vida m\u00e1xima.`);
-            console.log(`%c[DEBUG YUGI - EFFECT] Nenhum Tank aliado encontrado para buff de vida.`, 'color: gold;');
+            game.addLog(`${self.name} não encontrou Tank aliado para conceder vida máxima.`);
+            console.log(`%c[DEBUG YUGI - BUFF TANK] Nenhum Tank aliado encontrado para buff de vida.`, 'color: gold;');
         }
 
-       self.hasUsedTransformationAbilityOnce = true; // Marca a habilidade de transforma\u00e7\u00e3o como usada
-        game.reRenderCard(self); // For\u00e7a a re-renderiza\u00e7\u00e3o de Yugi para mostrar a nova imagem e nome
-        game.updateUI(); // Atualiza a UI geral
-        return true;
+        // Marcar a habilidade de transformação como usada (apenas uma vez por partida)
+        self.hasUsedTransformationAbilityOnce = true;
+
+        // Forçar a re-renderização de Yugi para mostrar a nova imagem e nome imediatamente
+        game.reRenderCard(self);
+        game.updateUI(); // Atualizar a UI geral para refletir as mudanças
+
+        return true; // Indica que a habilidade de início de batalha foi ativada
     } else {
-        console.log(`%c[DEBUG YUGI - EFFECT] TRANSFORMAÇÃO N\u00c3O ativada. Detalhes: Fase=%c${game.currentPhase}%c, Vida=%c${self.currentLife}%c, J\u00e1Usada=%c${self.hasUsedSpecialAbilityOnce}`, 'color: red;', 'color: yellow;', 'color: red;', 'color: yellow;', 'color: red;', 'color: yellow;');
+        console.log(`%c[DEBUG YUGI - HABILIDADE INÍCIO BATALHA] TRANSFORMAÇÃO NÃO ativada para ${self.name}. Detalhes: Fase=${game.currentPhase}, Vida=${self.currentLife}, JáUsada=${self.hasUsedTransformationAbilityOnce}.`, 'color: red;');
     }
-    return false;
-    
+
+    // === LÓGICA PASSIVA DE INVOCAÇÃO DO MAGO NEGRO (quando um aliado morre) ===
+    // Esta parte não é ativada por este specialEffect diretamente.
+    // Ela é ativada pela função `summonMagoNegro` dentro de `game.dealDamage`
+    // (quando `target` da `dealDamage` é um aliado derrotado).
+    // O specialEffect da carta `light6` não precisa fazer nada aqui para a invocação.
+    return false; // Retorna false se a habilidade de início de batalha não foi ativada.
+                  // Ou se esta chamada não é para a habilidade de início de batalha.
 }),
 new Card('light7', 'Goku', 'Damage', [6, 8], 22, 'Luz', 'Luz: Ataca todos os inimigos com seu Kamehameha.', async (game, self, target) => {
     // Este specialEffect será chamado APÓS a fase de cálculo de dano inicial em performAttack
@@ -877,6 +974,18 @@ new Card('light7', 'Goku', 'Damage', [6, 8], 22, 'Luz', 'Luz: Ataca todos os ini
     console.log(`%c[DEBUG GOKU] Habilidade n\u00e3o ativada (n\u00e3o \u00e9 Goku atacando).`, 'color: orange;');
     return false;
 }, 'img/light7.png'),
+new Card('light8', 'Toshinori Yagi', 'Feiticeiro', [5, 7], 30, 'Luz', 'Luz: Efeito passivo: Remove um debuff aleatório quando aplicado em um aliado. Quando ele remover, ele se transforma em All Might.', async (game, self, targetCard) => {
+        // Este specialEffect será chamado em game.applyEffect e game.dealDamage quando um debuff for aplicado a um aliado.
+        // self é Toshinori Yagi, targetCard é o aliado que recebeu o debuff.
+
+        console.log(`%c[DEBUG TOSHINORI YAGI] Habilidade passiva verificada em ${targetCard.name} (aplicando efeito).`, 'color: #fbbf24;'); // Amarelo para Luz
+
+        // A lógica principal da remoção do debuff e da transformação será no game.js para melhor controle.
+        // Este specialEffect aqui atua mais como um 'gancho' para a lógica de game.js.
+        // Ele não precisa fazer nada diretamente aqui, pois game.js vai lidar com a detecção
+        // de debuffs aplicados e a chamada da função de transformação.
+        return false; // Indica que não realizou uma ação que altere o fluxo diretamente aqui.
+    }, 'img/light8.png'),
 ];
 
 export const igrisCardData = {
@@ -988,5 +1097,77 @@ export const kiluaGodspeedCardData = {
         return true; // Indica que esquivou
       }
       return false; // Não esquivou
+    }
+};
+export const sasukeRinneganCardData = {
+    id: 'sasuke_rinnegan',
+    name: 'Sasuke Rinnegan',
+    image: 'img/sasuke_rinnegan.png', // Certifique-se de ter essa imagem
+    type: 'Damage',
+    attackRange: [15, 18],
+    maxLife: 20,
+    element: 'Luz', // Novo elemento para a forma transformada
+    effectDescription: 'Luz: Flecha de Indra: Permite ele atacar todos os inimigos.',
+    specialEffect: async (game, self, target) => {
+        // Este specialEffect será chamado quando Sasuke Rinnegan realizar um ataque.
+        // Ele fará com que o ataque atinja todos os inimigos.
+        console.log(`%c[DEBUG SASUKE RINNEGAN] Habilidade Flecha de Indra ativada!`, 'color: yellow;');
+
+        if (game.isProcessingAttack && game.selectedAttacker && game.selectedAttacker.id === self.id) {
+            game.addLog(`${self.name} (Luz) lança a Flecha de Indra em todos os inimigos!`);
+            
+            const opponentCards = game.getPlayersCards(game.getOpponent(self.owner)).filter(c => c.currentLife > 0);
+
+            if (opponentCards.length > 0) {
+                for (const enemy of opponentCards) {
+                    let damageToEnemy = Math.floor(Math.random() * (self.attackMax - self.attackMin + 1)) + self.attackMin;
+
+                    // Reaplicar multiplicador elemental para cada alvo, se necessário
+                    let elementalMultiplier = 1;
+                    const attackerElement = self.element; // 'Luz'
+                    const targetElement = enemy.element;
+                    const darkLightAdvantage = { 'Dark': 'Luz', 'Luz': 'Dark' };
+
+                    if (darkLightAdvantage[attackerElement] === targetElement) {
+                        elementalMultiplier = 1.5;
+                    } else if (darkLightAdvantage[targetElement] === attackerElement) {
+                        elementalMultiplier = 1 / 1.5;
+                    }
+                    damageToEnemy = Math.floor(damageToEnemy * elementalMultiplier);
+
+                    await game.dealDamage(enemy, damageToEnemy, self);
+                    game.addLog(`  ${enemy.name} recebeu ${damageToEnemy} de dano da Flecha de Indra.`);
+                }
+                game.updateUI();
+                return true;
+            } else {
+                game.addLog(`${self.name} (Luz) não encontrou inimigos para atingir com a Flecha de Indra.`);
+            }
+        }
+        return false;
+    }
+};
+export const allMightCardData = {
+    id: 'all_might', // ID único para All Might
+    name: 'All Might',
+    image: 'img/all_might.png', // Imagem do All Might
+    type: 'Damage',
+    attackRange: [12, 14],
+    maxLife: 40,
+    element: 'Luz', // Mantém o elemento Luz
+    effectDescription: 'Luz: Cura a si mesmo o dano que ele causa.',
+    specialEffect: async (game, self, target) => {
+        // Este specialEffect será chamado após All Might causar dano ao inimigo.
+        // self é All Might, target é o inimigo que recebeu o dano.
+        console.log(`%c[DEBUG ALL MIGHT] Habilidade de All Might (Cura por Dano) verificada. Atacante: %c${self.name}%c.`, 'color: #fbbf24;', 'color: yellow;', 'color: #fbbf24;');
+
+        if (game.isProcessingAttack && self.id === game.selectedAttacker.id && game.currentDamageDealt > 0) {
+            const healAmount = game.currentDamageDealt; // Cura-se pelo dano causado
+            game.healCard(self, healAmount);
+            game.addLog(`${self.name} (Luz) curou-se em ${healAmount} HP com o dano causado! Vida: ${self.currentLife}`);
+            game.updateUI();
+            return true;
+        }
+        return false;
     }
 };
