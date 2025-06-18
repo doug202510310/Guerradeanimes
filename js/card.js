@@ -125,7 +125,7 @@ export class Card {
 // --- Dados de Todas as 30 Cartas ---
 export const allCards = [
     // Água
-   new Card('water1', 'Blastoise', 'Tank', [2, 4], 50, 'Agua', 'Agua: Sempre que um aliado ataca, Blastoise se cura em 3 HP.', async (game, self, target) => {
+   new Card('water1', 'Blastoise', 'Tank', [2, 4], 50, 'Agua', 'Agua: Sempre que um aliado ataca, Blastoise se cura em 5 HP.', async (game, self, target) => {
         // Este specialEffect será chamado APÓS QUALQUER ALIADO de Blastoise realizar um ataque.
         // A 'game.isProcessingAttack' estará ativa para o ataque do aliado.
         // 'self' é Blastoise, 'target' é o alvo do ataque do aliado.
@@ -135,7 +135,7 @@ export const allCards = [
         if (self.currentLife > 0 && game.isProcessingAttack && game.selectedAttacker && game.selectedAttacker.owner === self.owner) {
             // Garante que o ataque não é do próprio Blastoise (se Blastoise ataca, ele não cura a si mesmo por isso)
             if (game.selectedAttacker.id !== self.id) {
-                const healAmount = 3;
+                const healAmount = 5;
                 game.healCard(self, healAmount);
                 game.addLog(`${self.name} (Agua) curou-se em ${healAmount} HP porque ${game.selectedAttacker.name} atacou. Vida: ${self.currentLife}`);
                 game.updateUI(); // Atualiza a UI para mostrar a cura
@@ -143,6 +143,24 @@ export const allCards = [
             }
         }
         return false; // Habilidade não ativada ou condições não met
+    }),
+    new Card('water2', 'Kisame', 'Tank', [1, 3], 48, 'Agua', 'Agua: Inflige 5 de dano sempre que recebe dano na criatura atacante.', async (game, self, attacker) => {
+        // Este specialEffect ser\u00e1 chamado AP\u00d3S Kisame receber dano
+        console.log(`%c[DEBUG KISAMe] Habilidade de Kisame verificada. Alvo de ataque: %c${self.name}%c.`, 'color: #3b82f6;', 'color: yellow;', 'color: #3b82f6;'); // Azul para Água
+
+        // A condição self.id === target.id (do seu código original) foi removida,
+        // pois esta habilidade \u00e9 chamada em dealDamage, onde 'self' \u00c9 O KISAMe,
+        // e 'attacker' \u00c9 O ATACANTE, que j\u00e1 foi passado corretamente.
+        
+        if (self.currentLife > 0 && attacker && attacker.owner !== self.owner && attacker.currentLife > 0) { // Garante que Kisame est\u00e1 vivo e o atacante \u00e9 v\u00e1lido
+            const damageToAttacker = 5;
+            game.dealDamage(attacker, damageToAttacker); // Kisame causa 5 de dano ao atacante
+            game.addLog(`${self.name} (Agua) causou ${damageToAttacker} de dano a ${attacker.name} por ter sido atacado!`);
+            console.log(`%c[DEBUG KISAMe] ${attacker.name} recebeu ${damageToAttacker} de dano de Kisame.`, 'color: #3b82f6;');
+            game.updateUI(); // Atualiza a UI para refletir o dano ao atacante
+            return true;
+        }
+        return false;
     }),
     new Card('water3', 'Tobirama', 'Damage', [13, 15], 22, 'Agua', 'Agua: O dano na criatura do elemento Fogo é aumentado em 15.', async (game, self, target) => {
         if (target && target.element === 'Fogo') {
@@ -152,7 +170,7 @@ export const allCards = [
         return 0;
     }),
     new Card('water4', 'Tomioka', 'Damage', [8, 10], 20, 'Agua', 'Agua: Pode atacar o Healer inimigo mesmo com o Tank ainda vivo.', null),
-    new Card('water5', 'Noelle', 'Healer', [8, 10], 30, 'Agua', 'Agua: Ao curar o aliado, aumenta a cura em 10 quando tem  outro aliado de Água no time.', async (game, self, target) => {
+    new Card('water5', 'Noelle', 'Healer', [13, 15], 30, 'Agua', 'Agua: Ao curar o aliado, aumenta a cura em 10 quando tem  outro aliado de Água no time.', async (game, self, target) => {
         if (game.isProcessingHeal && self.id === game.selectedAttacker.id && target) {
             const waterAllies = game.getPlayersCards(self.owner).filter(c => c.element === 'Agua' && c.id !== self.id);
             if (waterAllies.length >= 1) {
@@ -189,7 +207,7 @@ export const allCards = [
     }
     return false;
 }, 'img/water6.png'), 
-new Card('water7', 'Ban', 'Tank', [2, 4], 40, 'Agua', 'Agua: Ele sofre dano no lugar de seus aliados. Quando sua vida chega a zero, ele regenera tudo uma vez na partida.', async (game, self, target) => {
+new Card('water7', 'Ban', 'Tank', [2, 4], 50, 'Agua', 'Agua: Ele sofre dano no lugar de seus aliados. Quando sua vida chega a zero, ele regenera tudo uma vez na partida.', async (game, self, target) => {
         // Este specialEffect será chamado para a habilidade de regeneração,
         // quando a vida de Ban for zerada.
         console.log(`%c[DEBUG BAN] Habilidade de Ban (Regeneração) verificada. Carta: %c${self.name}%c.`, 'color: #00BFFF;', 'color: yellow;', 'color: #00BFFF;'); // Azul Celeste para Água
@@ -220,7 +238,7 @@ new Card('water7', 'Ban', 'Tank', [2, 4], 40, 'Agua', 'Agua: Ele sofre dano no l
     }, 'img/water8.png'),
 
     // Fogo
-    new Card('fire1', 'Escanor', 'Tank', [3, 5], 42, 'Fogo', 'Fogo: Tem 50% de chance de atacar junto de outra criatura atacante.', async (game, self, target) => {
+    new Card('fire1', 'Escanor', 'Tank', [4, 6], 45, 'Fogo', 'Fogo: Tem 50% de chance de atacar junto de outra criatura atacante.', async (game, self, target) => {
     if (game.isProcessingAttack && self.id === game.selectedAttacker.id && Math.random() < 0.50) {
         // Tocar o som do Escanor
         if (game.escanorSound) { // <-- Verifique se game.escanorSound existe
@@ -234,8 +252,8 @@ new Card('water7', 'Ban', 'Tank', [2, 4], 40, 'Agua', 'Agua: Ele sofre dano no l
     }
     return false;
 }),
-    new Card('fire2', 'Endeavor', 'Tank', [2, 4], 46, 'Fogo', 'Fogo: Chance de 20% de queimar o alvo inimigo que atacou, em 3 de dano, independente se o ataque do inimigo for nele ou não.', async (game, self, target) => {
-        if (game.isProcessingAttack && self.id === target.id && Math.random() < 0.20) {
+    new Card('fire2', 'Endeavor', 'Tank', [2, 4], 46, 'Fogo', 'Fogo: Chance de 35% de queimar o alvo inimigo que atacou, em 3 de dano, independente se o ataque do inimigo for nele ou não.', async (game, self, target) => {
+        if (game.isProcessingAttack && self.id === target.id && Math.random() < 0.35) {
             const attacker = game.selectedAttacker;
             if (attacker && attacker.owner !== self.owner) {
                 game.applyEffect(attacker, 'Queimar', 2, 3); 
@@ -255,7 +273,7 @@ new Card('water7', 'Ban', 'Tank', [2, 4], 40, 'Agua', 'Agua: Ele sofre dano no l
             }
         }
     }),
-    new Card('fire4', 'Roy Mustang', 'Damage', [11, 14], 21, 'Fogo', 'Fogo: Sempre que atacar causa 5 de dano a outras duas criaturas do inimigo aleatórias.', async (game, self, target) => {
+    new Card('fire4', 'Roy Mustang', 'Damage', [13, 15], 21, 'Fogo', 'Fogo: Sempre que atacar causa 5 de dano a outras duas criaturas do inimigo aleatórias.', async (game, self, target) => {
         if (game.isProcessingAttack && self.id === game.selectedAttacker.id) {
             const enemyCards = game.getPlayersCards(game.getOpponent(self.owner)).filter(c => c.id !== target.id && c.currentLife > 0);
             if (enemyCards.length > 0) {
@@ -376,16 +394,16 @@ new Card('water7', 'Ban', 'Tank', [2, 4], 40, 'Agua', 'Agua: Ele sofre dano no l
         }
         return 0;
     }),
-    new Card('earth2', 'Toph', 'Tank', [2, 4], 46, 'Terra', 'Terra: Uma vez por turno, Toph pode conceder 5 de Escudo (absorve os próximos 5 de dano) a um aliado adjacente (nas posições 3, 4 ou 5) pelo próximo ataque que ele sofrer.', async (game, self, target) => {
+    new Card('earth2', 'Toph', 'Tank', [2, 4], 46, 'Terra', 'Terra: Uma vez por turno, Toph pode conceder 7 de Escudo (absorve os próximos 7 de dano) a um aliado adjacente (nas posições 3, 4 ou 5) pelo próximo ataque que ele sofrer.', async (game, self, target) => {
         if (game.currentPhase === 'battle' && game.currentPlayerId === self.owner && self.currentLife > 0 && !self.hasUsedSpecialAbilityOnce) {
             const allyCards = game.getPlayersCards(self.owner).filter(c => c.currentLife > 0 && c.id !== self.id);
             const backRowAllies = allyCards.filter(c => ['pos3', 'pos4', 'pos5'].includes(c.position));
             
             if (backRowAllies.length > 0) {
                 const targetAlly = backRowAllies[Math.floor(Math.random() * backRowAllies.length)];
-                game.applyEffect(targetAlly, 'Escudo', -1, 5);
+                game.applyEffect(targetAlly, 'Escudo', -1, 7);
                 self.hasUsedSpecialAbilityOnce = true;
-                game.addLog(`${self.name} (Terra) concedeu 5 de Escudo a ${targetAlly.name}.`);
+                game.addLog(`${self.name} (Terra) concedeu 7 de Escudo a ${targetAlly.name}.`);
                 game.updateUI();
                 return true;
             }
@@ -402,14 +420,14 @@ new Card('water7', 'Ban', 'Tank', [2, 4], 40, 'Agua', 'Agua: Ele sofre dano no l
             }
         }
     }),
-    new Card('earth4', 'Might Guy', 'Damage', [13, 18], 22, 'Terra', 'Terra: Might Guy ignora 10 de Escudo (se o inimigo tiver um efeito que absorve dano) ao atacar.', async (game, self, target) => {
+    new Card('earth4', 'Might Guy', 'Damage', [16, 18], 22, 'Terra', 'Terra: Might Guy ignora 10 de Escudo (se o inimigo tiver um efeito que absorve dano) ao atacar.', async (game, self, target) => {
         if (game.isProcessingAttack && self.id === game.selectedAttacker.id && target.effectsApplied['Escudo']) {
             game.addLog(`${self.name} (Terra) ignorou 10 de Escudo de ${target.name}.`);
             return 10; 
         }
         return 0;
     }),
-    new Card('earth5', 'Tsunade', 'Healer', [16, 18], 28, 'Terra', 'Terra: No início do turno do jogador, se Tsunade tiver menos que sua Vida máxima, ele se cura em 5.', async (game, self, target) => {
+    new Card('earth5', 'Tsunade', 'Healer', [14, 16], 25, 'Terra', 'Terra: No início do turno do jogador, se Tsunade tiver menos que sua Vida máxima, ele se cura em 5.', async (game, self, target) => {
         if (game.currentPhase === 'battle' && game.currentPlayerId === self.owner && self.currentLife < self.maxLife && self.currentLife > 0) {
             game.healCard(self, 5);
             game.addLog(`${self.name} (Terra) regenerou 5 de vida. Vida: ${self.currentLife}`);
@@ -611,12 +629,12 @@ new Card('wind7', 'Meimei', 'Healer', [12, 14], 22, 'Ar', 'Ar: Sempre que Meimei
         }
         return false;
     }, 'img/wind7.png'),
-   new Card('wind8', 'Kilua', 'Feiticeiro', [5, 7], 30, 'Wind', 'Passivo: Após qualquer dano no campo, Kilua executa inimigos com 5 ou menos de vida(impossibilitando invocação). Se executar, ele se transforma em Kilua Godspeed (uma vez por partida).', async (game, self, target) => {
+   new Card('wind8', 'Kilua', 'Feiticeiro', [5, 7], 30, 'Wind', 'Ar: Após qualquer dano no campo, Kilua executa inimigos com 5 ou menos de vida(impossibilitando invocação). Se executar, ele se transforma em Kilua Godspeed (uma vez por partida).', async (game, self, target) => {
     // Este specialEffect está aqui para manter a estrutura e consistência da classe Card.
     // A lógica principal da execução e transformação de Kilua é gerenciada por
     // game.checkAndExecuteKiluaPassive, que é chamada em game.dealDamage.
-    // Portanto, esta fun\u00e7\u00e3o em si n\u00e3o precisa fazer nada ativo para a passiva de execu\u00e7\u00e3o.
-    return false; // Retorna false indicando que este specialEffect n\u00e3o realizou uma a\u00e7\u00e3o espec\u00edfica por si s\u00f3.
+    // Portanto, esta função em si não precisa fazer nada ativo para a passiva de execução.
+    return false; // Retorna false indicando que este specialEffect não realizou uma ação específica por si só.
 }, 'img/wind8.png'), // Certifique-se de ter 'img/wind8.png'
 
     // Dark
@@ -734,7 +752,7 @@ new Card('dark6', 'Merlin', 'Healer', [11, 12], 30, 'Dark', 'Dark: Para curar um
     }
     return false;
 }, 'img/dark6.png'),
- new Card('dark7', 'Sukuna', 'Damage', [8, 10], 22, 'Dark', 'Dark: Ataca junto de outro aliado. Quando ativado, Sukuna faz um som.', async (game, self, target) => {
+ new Card('dark7', 'Sukuna', 'Damage', [6, 8], 22, 'Dark', 'Dark: Ataca junto de outro aliado. Quando ativado, Sukuna faz um som.', async (game, self, target) => {
         // Este specialEffect será chamado APÓS a carta principal ter atacado
         // E só se a condição de "atacar junto" for cumprida
         console.log(`%c[DEBUG SUKUNA] Habilidade de Sukuna (Ataque Conjunto) verificada. Atacante: %c${self.name}%c.`, 'color: #8B0000;', 'color: yellow;', 'color: #8B0000;'); // Marrom Escuro para Dark
@@ -801,13 +819,30 @@ new Card('dark8', 'Megumi', 'Feiticeiro', [5, 7], 30, 'Dark', 'Dark: Passivo: No
     return false; // Ninguém para drenar ou não é o momento do dreno
 }, 'img/dark8.png'),
 
-new Card('light1', 'Hashirama', 'Tank', [2, 4], 50, 'Luz', 'Luz: Quando Hashirama recebe dano, ele tem 50% de chance de reduzir esse dano em 5.', async (game, self, target) => {
-    if (game.isProcessingAttack && self.id === target.id && Math.random() < 0.50) {
-            game.addLog(`${self.name} (Terra) reduziu 5 de dano recebido!`);
-            return -5; 
+new Card('light1', 'Hashirama', 'Tank', [2, 4], 50, 'Luz', 'Luz: Quando Hashirama recebe dano, ele tem 50% de chance de reduzir esse dano em 5. No in\u00edcio do turno do jogador, se a vida dele for menor que a m\u00e1xima, ele se cura em 3 HP.', async (game, self, targetOrAttacker) => {
+    // --- Lógica de Redução de Dano (quando Hashirama é atacado) ---
+    // 'targetOrAttacker' aqui será o próprio Hashirama quando a habilidade de redução for verificada em dealDamage.
+    // 'game.isProcessingAttack' e 'self.id === targetOrAttacker.id' garantem que a redução se aplica ao ser atingido.
+    if (game.isProcessingAttack && self.id === targetOrAttacker.id) {
+        if (Math.random() < 0.50) {
+            game.addLog(`${self.name} (Luz) reduziu 5 de dano recebido!`);
+            return -5; // Retorna um valor negativo para subtrair do dano
         }
-        return 0;
-    }),
+    }
+
+    // --- Lógica de Regeneração (no início do turno do jogador) ---
+    // Esta parte será ativada quando a habilidade for chamada em processTurnStartEffects,
+    // onde 'self' será Hashirama e 'targetOrAttacker' será null.
+    if (game.currentPhase === 'battle' && game.currentPlayerId === self.owner && self.currentLife < self.maxLife && self.currentLife > 0) {
+        const healAmount = 3;
+        game.healCard(self, healAmount);
+        game.addLog(`${self.name} (Luz) regenerou ${healAmount} de vida. Vida: ${self.currentLife}`);
+        game.updateUI(); // Atualiza a UI para mostrar a cura
+        return 0; // Retorna 0 para a parte de redução de dano se a habilidade foi de cura.
+    }
+    
+    return 0; // Retorna 0 se nenhuma das habilidades se aplicou
+}),
 new Card('light2', 'Naruto', 'Tank', [4, 5], 52, 'Luz', 'Luz: No início do turno do jogador, Naruto concede 7 de Escudo (absorve os próximos 7 de dano) a todos os aliados na fileira de trás.', async (game, self, target) => {
     console.log(`[CHECKPOINT 5] Dentro do specialEffect do Naruto. Dono: ${self.owner}, Vida: ${self.currentLife}, ID: ${self.id}`);
 
@@ -1054,8 +1089,8 @@ export const magoNegroCardData = {
     name: 'Gon Adulto',
     image: 'img/gonadulto.png', // Imagem do Gon Adulto
     type: 'Damage',
-    attackRange: [14, 18],
-    maxLife: 25,
+    attackRange: [20, 23],
+    maxLife: 27,
     element: 'Terra', // Mantém o elemento Terra
     effectDescription: 'Terra: Uma forma liberada de poder insano.',
     specialEffect: null // Gon Adulto não tem um efeito especial on-transform ou por turno, ele é pura estatística

@@ -568,6 +568,11 @@ if (uzuiPlayer2 && uzuiPlayer2.specialEffect && !uzuiPlayer2.hasUsedSpecialAbili
     if (card.id === 'earth2' && card.specialEffect) {
         await card.specialEffect(this, card, null);
     }
+
+    // --- ADICIONE ESTE BLOCO PARA HASHIRAMA ---
+    if (card.id === 'light1' && card.specialEffect) { // Hashirama (Luz)
+        await card.specialEffect(this, card, null); // targetOrAttacker será null, ativando a parte de cura
+    }
 },
 
     handleCardClick: async function(cardId) {
