@@ -126,7 +126,7 @@ export const game = {
         // ATENÇÃO: Substitua estes URLs pelos seus arquivos de áudio reais
         this.backgroundMusic = new Audio('audio/bgm.mp3'); 
         this.backgroundMusic.loop = true;
-        this.backgroundMusic.volume = 0.2; 
+        this.backgroundMusic.volume = 0.1; 
 
         this.draftSound = new Audio('audio/draft.mp3'); 
         this.draftSound.volume = 0.1;
@@ -135,10 +135,10 @@ export const game = {
         this.healSound = new Audio('audio/heal.mp3'); 
         this.healSound.volume = 0.5;
         this.turnTransitionSound = new Audio('audio/turn_transition.mp3'); 
-        this.turnTransitionSound.volume = 0.4;
-        this.transformationSound = new Audio('audio/generic_transformation.mp3'); // Você precisará criar este arquivo de áudio
-        this.transformationSound.volume = 0.6;
-        this.transformationSound.playbackRate = 1.2; // Ajuste a velocidade de reprodução se necessário
+        this.turnTransitionSound.volume = 0.2;
+       // this.transformationSound = new Audio('audio/generic_transformation.mp3'); // Você precisará criar este arquivo de áudio
+        //this.transformationSound.volume = 0.6;
+        //this.transformationSound.playbackRate = 1.2; // Ajuste a velocidade de reprodução se necessário
         this.sukunaSound = new Audio('audio/Sukuna.mp3');
         this.sukunaSound.volume = 0.4;
         this.sukunaSound.playbackRate = 1.2; // Ajuste a velocidade de reprodução se necessário
@@ -539,62 +539,38 @@ if (uzuiPlayer2 && uzuiPlayer2.specialEffect && !uzuiPlayer2.hasUsedSpecialAbili
         // Removido log de debug de Naruto no time. Habilidade de início de turno processada.
     },
 
-    processTurnStartEffects: async function(card) {
-        if (card.currentLife <= 0) return; 
+   processTurnStartEffects: async function(card) {
+    if (card.currentLife <= 0) return;
 
-        // Processa efeitos ao longo do tempo (Queimar, Amaldiçoar, Escudo, EsquivaChance, Partitura)
-        for (const effectName in card.effectsApplied) {
-    const effect = card.effectsApplied[effectName];
-    console.log(`%c[DEBUG EFFECTS] Processando efeito: ${effectName}, Turnos: ${effect.turns} para ${card.name}`, 'color: #DA70D6;');
+    // Processa efeitos ao longo do tempo (Queimar, Amaldiçoar, Escudo, EsquivaChance, Partitura)
+    // ... (restante do seu código para este bloco, sem alteração) ...
 
-    // Esta parte continua a mesma: Queimar e Amaldiçoar causam dano por turno e decrementam turnos
-    if (effect.turns > 0) {
-        if (effectName === 'Queimar' || effectName === 'Amaldiçoar') {
-            this.dealDamage(card, effect.value);
-            this.addLog(`${card.name} sofreu ${effect.value} de dano de ${effectName}. Vida: ${card.currentLife}`);
-        }
-        effect.turns--; // Decrementa os turnos para efeitos TEMPORÁRIOS
+    // REMOVIDO: Bônus de ataque de Hyakkimaru (já está em startBattlePhase)
+    // ... (restante do seu código para este bloco, sem alteração) ...
+
+    // HABILIDADE DE MEGUMI (dark8) - Dreno passivo uma vez por turno
+    if (card.id === 'dark8' && card.specialEffect) {
+        await card.specialEffect(this, card, null);
     }
+    
+    // Habilidades de início de turno de cartas específicas
+    const currentPlayer = this.players[this.currentPlayerId];
 
-    // AGORA, SÓ REMOVA O EFEITO SE ELE NÃO FOR 'Escudo' OU 'Partitura' E SE SEUS TURNOS CHEGARAM A ZERO
-    if (effect.turns === 0 && effectName !== 'Escudo' && effectName !== 'Partitura') {
-        if (effectName === 'Amaldiçoar' || effectName === 'Enraizar' || effectName === 'Atordoar') {
-            card.canAttack = true;
-        }
-        this.reRenderCard(card); // Força a renderização para remover o visual do efeito expirado
-        delete card.effectsApplied[effectName];
-        this.addLog(`${card.name} não está mais sob efeito de ${effectName}.`);
+    // Tsunade's healing (earth5)
+    if (card.id === 'earth5' && card.specialEffect) {
+        await card.specialEffect(this, card, null);
     }
-}
-            
-        // Remove o bônus de ataque de Hyakkimaru se sua fonte (Hyakkimaru) for derrotada
-        if (card.tempAttackBonusSource) {
-            const hyakkimaruSourceCard = this.getCardById(card.tempAttackBonusSource); 
-            if (!hyakkimaruSourceCard || hyakkimaruSourceCard.currentLife <= 0) {
-                card.tempAttackBonus = 0;
-                card.tempAttackBonusSource = null;
-                this.addLog(`${card.name} perdeu o bônus de ataque de Hyakkimaru, que foi derrotado.`);
-            }
-        }
-        
-        // Habilidades de início de turno de cartas específicas (Naruto removido daqui)
-        const currentPlayer = this.players[this.currentPlayerId]; 
-
-        // Tsunade's healing (earth5)
-        if (card.id === 'earth5' && card.specialEffect) {
-            await card.specialEffect(this, card, null); 
-        }
-         if (card.id === 'fire6' && card.specialEffect) {
+    if (card.id === 'fire6' && card.specialEffect) {
         await card.specialEffect(this, card, null); // Chama o specialEffect de Benimaru
     }
-        
-        // Toph's shield (earth2)
-        if (card.id === 'earth2' && card.specialEffect) {
-            await card.specialEffect(this, card, null); 
-        }
-    },
+    
+    // Toph's shield (earth2)
+    if (card.id === 'earth2' && card.specialEffect) {
+        await card.specialEffect(this, card, null);
+    }
+},
 
-      handleCardClick: async function(cardId) {
+    handleCardClick: async function(cardId) {
     const clickedCard = this.getCardById(cardId);
 
     // 1. Validação inicial da carta clicada
@@ -602,6 +578,7 @@ if (uzuiPlayer2 && uzuiPlayer2.specialEffect && !uzuiPlayer2.hasUsedSpecialAbili
         this.addLog("Esta carta está derrotada ou não é válida. Selecione uma carta viva.");
         this.clearSelections(); // Sempre limpa se a seleção é inválida
         console.log(`%c[DEBUG CLICK] Carta inválida: ${clickedCard ? clickedCard.name : 'N/A'}, Vida: ${clickedCard ? clickedCard.currentLife : 'N/A'}`, 'color: orange;');
+        // Não chamar updateUI aqui, será chamado no final
         return;
     }
 
@@ -617,13 +594,12 @@ if (uzuiPlayer2 && uzuiPlayer2.specialEffect && !uzuiPlayer2.hasUsedSpecialAbili
         if (isOwner && hasNotActed && canPerformAction) {
             this.selectedAttacker = clickedCard;
             this.addLog(`Você selecionou ${clickedCard.name} para agir.`);
-            this.updateUI(); // Renderiza para destacar o atacante selecionado
-
             // Esconde os botões por padrão, eles só aparecerão se um alvo válido for selecionado
             this.attackButton.classList.add('hidden');
             this.healButton.classList.add('hidden');
 
             console.log(`%c[DEBUG CLICK] ${clickedCard.name} selecionado como atacante.`, 'color: lightgreen;');
+            // Não chamar updateUI aqui, será chamado no final
             return; // Sai da função após selecionar o atacante
         } else {
             // Se a carta clicada não pode ser um atacante (não é do dono, já agiu, etc.)
@@ -636,6 +612,7 @@ if (uzuiPlayer2 && uzuiPlayer2.specialEffect && !uzuiPlayer2.hasUsedSpecialAbili
             }
             this.clearSelections(); // Limpa qualquer seleção anterior
             console.log(`%c[DEBUG CLICK] ${clickedCard.name} não pode ser selecionado como atacante.`, 'color: darkred;');
+            // Não chamar updateUI aqui, será chamado no final
             return;
         }
     }
@@ -651,32 +628,34 @@ if (uzuiPlayer2 && uzuiPlayer2.specialEffect && !uzuiPlayer2.hasUsedSpecialAbili
     if (this.selectedAttacker.id === clickedCard.id) {
         this.addLog(`Deselecionou ${clickedCard.name}.`);
         this.clearSelections();
+        // Não chamar updateUI aqui, será chamado no final
         return;
     }
 
     // 3.1. Alvo ALIADO (para cura ou habilidades em aliados)
     if (this.selectedAttacker.owner === clickedCard.owner) {
         // Verifica se o atacante é um Healer ou Rengoku (que tem uma ação de "cura")
-        // NOTE: Feiticeiros não tem ação de "clicar para curar"
-        if (this.selectedAttacker.type === 'Healer' || this.selectedAttacker.id === 'fire5') {
+        // Feiticeiros não têm ação de "clicar para curar" a menos que seja Julius Novachrono
+        if (this.selectedAttacker.type === 'Healer' || this.selectedAttacker.id === 'fire5' || this.selectedAttacker.id === 'dark6' || this.selectedAttacker.id === 'light5') {
             // Lógica específica para Julius Novachrono (light5)
             if (this.selectedAttacker.id === 'light5' && this.selectedAttacker.hasUsedSpecialAbilityOnce) {
                 this.addLog(`${this.selectedAttacker.name} já usou sua habilidade especial neste jogo.`);
                 this.clearSelections();
+                // Não chamar updateUI aqui, será chamado no final
                 return;
             }
             // Não pode curar/purificar alvo com vida cheia e sem debuffs (se for Julius)
             if (this.selectedAttacker.id === 'light5') { // Apenas Julius tem essa condição extra
-                 const hasNegativeEffects = Object.keys(clickedCard.effectsApplied).some(effectName =>
-                     ['Amaldiçoar', 'Queimar', 'Enraizar', 'Atordoar', 'Partitura'].includes(effectName) // Adicionado Partitura aqui
-                 );
+                const hasNegativeEffects = Object.keys(clickedCard.effectsApplied).some(effectName =>
+                    ['Amaldiçoar', 'Queimar', 'Enraizar', 'Atordoar', 'Partitura'].includes(effectName)
+                );
                 if (clickedCard.currentLife >= clickedCard.maxLife && !hasNegativeEffects) {
                     this.addLog(`${clickedCard.name} já tem vida máxima e nenhum efeito negativo para ${this.selectedAttacker.name} purificar.`);
                     this.clearSelections();
+                    // Não chamar updateUI aqui, será chamado no final
                     return;
                 }
             }
-
 
             this.selectedTarget = clickedCard;
             this.addLog(`Você selecionou ${clickedCard.name} como alvo de cura/habilidade.`);
@@ -686,18 +665,21 @@ if (uzuiPlayer2 && uzuiPlayer2.specialEffect && !uzuiPlayer2.hasUsedSpecialAbili
             this.addLog("Esta carta não pode curar aliados.");
             this.clearSelections();
             console.log(`%c[DEBUG BUTTONS] Carta de Dano/Tank clicou em aliado, deselecionado.`, 'color: yellow;');
+            // Não chamar updateUI aqui, será chamado no final
+            return;
         }
     }
     // 3.2. Alvo INIMIGO (para ataque)
     else {
         // Verifica se o atacante pode atacar inimigos (qualquer tipo que não seja "Healer" puro)
         // Ou se é um Healer com exceção (Rengoku, Merlin tem ação especial, mas aqui é ataque)
-        const canAttackerTargetEnemy = (this.selectedAttacker.type !== 'Healer' || this.selectedAttacker.id === 'fire5' || this.selectedAttacker.id === 'dark6' || this.selectedAttacker.type === 'Feiticeiro'); // Inclui Feiticeiros aqui se eles puderem "atacar" por clique (no seu caso, eles não atacam, mas mantive o check)
+        const canAttackerTargetEnemy = (this.selectedAttacker.type !== 'Healer' || this.selectedAttacker.id === 'fire5' || this.selectedAttacker.id === 'dark6'); // REMOVIDO: || this.selectedAttacker.type === 'Feiticeiro'
 
         if (!canAttackerTargetEnemy) {
             this.addLog("Esta carta não pode atacar inimigos.");
             this.clearSelections();
-            console.log(`%c[DEBUG BUTTONS] Healer padrão clicou em inimigo, deselecionado.`, 'color: yellow;');
+            console.log(`%c[DEBUG BUTTONS] Healer padrão ou Feiticeiro (que não ataca diretamente) clicou em inimigo, deselecionado.`, 'color: yellow;');
+            // Não chamar updateUI aqui, será chamado no final
             return;
         }
 
@@ -718,6 +700,7 @@ if (uzuiPlayer2 && uzuiPlayer2.specialEffect && !uzuiPlayer2.hasUsedSpecialAbili
                 // Atacante não ignora Tanks, e o alvo clicado está na traseira, mas há cartas na frente
                 this.addLog("Você deve atacar as cartas da frente (Tanks ou outros) primeiro.");
                 this.clearSelections();
+                // Não chamar updateUI aqui, será chamado no final
                 return;
             }
         } else {
@@ -734,13 +717,15 @@ if (uzuiPlayer2 && uzuiPlayer2.specialEffect && !uzuiPlayer2.hasUsedSpecialAbili
             this.addLog("O alvo selecionado já está derrotado ou não é um alvo válido.");
             this.clearSelections();
             console.log(`%c[DEBUG BUTTONS] Alvo derrotado ou inválido, deselecionado.`, 'color: yellow;');
+            // Não chamar updateUI aqui, será chamado no final
+            return;
         }
     }
-    this.updateUI(); // Garante que a UI esteja atualizada com a seleção do alvo
+    this.updateUI(); // ATUALIZAÇÃO DA UI UMA ÚNICA VEZ NO FINAL DA FUNÇÃO
 },
 
-   processAction: async function(actionType) {
-    try { 
+  processAction: async function(actionType) {
+    try {
         if (!this.selectedAttacker || !this.selectedTarget) {
             this.addLog("Selecione uma carta sua e um alvo primeiro.");
             console.log(`%c[DEBUG PROCESSACTION] Falha: Atacante ou alvo n\u00e3o selecionado.`, 'color: red;');
@@ -749,8 +734,10 @@ if (uzuiPlayer2 && uzuiPlayer2.specialEffect && !uzuiPlayer2.hasUsedSpecialAbili
         console.log(`%c[DEBUG PROCESSACTION] Processando a\u00e7\u00e3o: ${actionType} com ${this.selectedAttacker.name} -> ${this.selectedTarget.name}`, 'color: magenta;');
 
         if (actionType === 'attack') {
-            if (this.selectedAttacker.type === 'Healer' && this.selectedAttacker.id !== 'fire5') { 
-                this.addLog("Healers n\u00e3o podem atacar inimigos, a menos que tenham um efeito especial.");
+            // Feiticeiros não podem atacar com clique, já tratados em handleCardClick.
+            // Aqui, apenas healers que não são exceções são impedidos.
+            if (this.selectedAttacker.type === 'Healer' && this.selectedAttacker.id !== 'fire5' && this.selectedAttacker.id !== 'dark6') { // Rengoku e Merlin podem atacar
+                this.addLog("Healers não podem atacar inimigos, a menos que tenham um efeito especial.");
                 console.log(`%c[DEBUG PROCESSACTION] Falha: Healer sem permiss\u00e3o de ataque.`, 'color: red;');
                 this.clearSelections();
                 return;
@@ -760,57 +747,55 @@ if (uzuiPlayer2 && uzuiPlayer2.specialEffect && !uzuiPlayer2.hasUsedSpecialAbili
             await this.performAttack(this.selectedAttacker, this.selectedTarget);
 
         } else if (actionType === 'heal') {
-            // >>> NOVA LÓGICA PARA MERLIN <<<
-            if (this.selectedAttacker.id === 'dark6') { // Se o atacante é a Merlin
+            // Lógica específica para Merlin (dark6)
+            if (this.selectedAttatcher.id === 'dark6') { // Se o atacante é a Merlin
                 console.log(`%c[DEBUG PROCESSACTION] Merlin selecionada para DRENAR CURA.`, 'color: magenta;');
                 await this.selectedAttacker.specialEffect(this, this.selectedAttacker, this.selectedTarget); // Chama o specialEffect da Merlin
             }
-            // >>> FIM DA NOVA LÓGICA PARA MERLIN <<<
-            else if (this.selectedAttacker.type !== 'Healer' && this.selectedAttacker.type !== 'Feiticeiro') { 
-                this.addLog("Apenas Healers ou Feiticeiros podem curar/usar esta habilidade.");
-                console.log(`%c[DEBUG PROCESSACTION] Falha: N\u00e3o Healer/Feiticeiro.`, 'color: red;');
+            // Verifica se é um Healer ou um Feiticeiro (que pode curar, como Julius)
+            else if (this.selectedAttacker.type !== 'Healer' && (this.selectedAttacker.type !== 'Feiticeiro' || this.selectedAttacker.id !== 'light5')) { // Feiticeiros normais não curam por clique, apenas Julius.
+                this.addLog("Apenas Healers ou Feiticeiros específicos podem curar/usar esta habilidade.");
+                console.log(`%c[DEBUG PROCESSACTION] Falha: Não Healer/Feiticeiro (que não seja Julius).`, 'color: red;');
                 this.clearSelections();
                 return;
             }
             if (this.selectedAttacker.type === 'Healer' && this.selectedTarget.owner !== this.selectedAttacker.owner) {
-                this.addLog("Voc\u00ea s\u00f3 pode curar seus pr\u00f3prios aliados.");
-                console.log(`%c[DEBUG PROCESSACTION] Falha: Alvo n\u00e3o aliado para Healer.`, 'color: red;');
+                this.addLog("Você só pode curar seus próprios aliados.");
+                console.log(`%c[DEBUG PROCESSACTION] Falha: Alvo não aliado para Healer.`, 'color: red;');
                 this.clearSelections();
                 return;
             }
 
-            // Checagens espec\u00edficas para Julius Novachrono (light5)
+            // Checagens específicas para Julius Novachrono (light5)
             if (this.selectedAttacker.id === 'light5') {
                 if (this.selectedAttacker.hasUsedSpecialAbilityOnce) {
-                    this.addLog(`${this.selectedAttacker.name} j\u00e1 usou sua habilidade especial neste jogo.`);
-                    console.log(`%c[DEBUG PROCESSACTION] Julius: J\u00e1 usado.`, 'color: red;');
+                    this.addLog(`${this.selectedAttacker.name} já usou sua habilidade especial neste jogo.`);
+                    console.log(`%c[DEBUG PROCESSACTION] Julius: Já usado.`, 'color: red;');
                     this.clearSelections();
                     return;
                 }
-                const hasNegativeEffects = Object.keys(this.selectedTarget.effectsApplied).some(effectName => ['Amaldi\u00e7oar', 'Queimar', 'Enraizar', 'Atordoar'].includes(effectName));
-                if (this.selectedTarget.currentLife >= this.selectedTarget.maxLife && !hasNegativeEffects) { 
-                    this.addLog(`${this.selectedTarget.name} j\u00e1 tem vida m\u00e1xima e nenhum efeito negativo para Julius Novachrono purificar.`);
+                const hasNegativeEffects = Object.keys(this.selectedTarget.effectsApplied).some(effectName => ['Amaldiçoar', 'Queimar', 'Enraizar', 'Atordoar', 'Partitura'].includes(effectName));
+                if (this.selectedTarget.currentLife >= this.selectedTarget.maxLife && !hasNegativeEffects) {
+                    this.addLog(`${this.selectedTarget.name} já tem vida máxima e nenhum efeito negativo para Julius Novachrono purificar.`);
                     console.log(`%c[DEBUG PROCESSACTION] Julius: Alvo vida cheia ou sem efeitos negativos.`, 'color: red;');
                     this.clearSelections();
                     return;
                 }
-            } 
-            // Sung Jin-woo (dark5) l\u00f3gica est\u00e1 no specialEffect e handleCardClick j\u00e1 validou antes.
-            // N\u00e3o h\u00e1 condi\u00e7\u00f5es adicionais aqui para ele.
-            // A chamada a performHeal para Sung Jin-woo ser\u00e1 feita abaixo.
-
-            // Se não é Merlin ou Julius, então é um healer normal ou Sung Jin-woo
-            if (this.selectedAttacker.id !== 'dark6' && this.selectedAttacker.id !== 'light5') {
-                 this.addLog(`${this.selectedAttacker.name} curando/usando habilidade em ${this.selectedTarget ? this.selectedTarget.name : 'N/A'}!`);
-                 await this.performHeal(this.selectedAttacker, this.selectedTarget);
+                // Se Julius passa nas validações, chama o specialEffect dele
+                await this.selectedAttacker.specialEffect(this, this.selectedAttacker, this.selectedTarget);
+            }
+            // Se não é Merlin ou Julius, então é um healer normal
+            else {
+                this.addLog(`${this.selectedAttacker.name} curando/usando habilidade em ${this.selectedTarget ? this.selectedTarget.name : 'N/A'}!`);
+                await this.performHeal(this.selectedAttacker, this.selectedTarget);
             }
         }
 
         this.selectedAttacker.hasAttackedThisTurn = true;
         console.log(`%c[DEBUG PROCESSACTION] A\u00e7\u00e3o conclu\u00edda. Limpando sele\u00e7\u00f5es.`, 'color: magenta;');
-        this.clearSelections(); 
-        this.endTurn(); 
-    } catch (error) { 
+        this.clearSelections();
+        this.endTurn();
+    } catch (error) {
         console.error(`%c[ERRO CR\u00cdTICO] Erro em processAction:`, 'color: white; background-color: red; padding: 5px;', error);
         this.addLog(`ERRO no jogo: ${error.message}. Reinicie o jogo.`);
         this.clearSelections();
@@ -825,17 +810,6 @@ performAttack: async function(attacker, target, isSecondHit = false) {
         this.currentDamageDealt = 0;
         this.attackCountForPlayer[attacker.owner]++;
 
-        // --- LÓGICA DO EFEITO PASSIVO DE DRENO DE MEGUMI (dark8) ---
-        // Ativa APENAS UMA VEZ por ataque principal (se não for o segundo hit do Toji)
-        const megumiPlayer1 = this.players.player1.team.find(c => c.id === 'dark8' && c.currentLife > 0);
-        const megumiPlayer2 = this.players.player2.team.find(c => c.id === 'dark8' && c.currentLife > 0);
-
-        if (megumiPlayer1 && megumiPlayer1.specialEffect) {
-            await megumiPlayer1.specialEffect(this, megumiPlayer1, null);
-        }
-        if (megumiPlayer2 && megumiPlayer2.specialEffect) {
-            await megumiPlayer2.specialEffect(this, megumiPlayer2, null);
-        }
     }
 
     // 2. Animação do Atacante
@@ -912,26 +886,11 @@ performAttack: async function(attacker, target, isSecondHit = false) {
     // 7. Aplicar Dano ao Alvo (Função dealDamage lida com Escudo, Esquiva, Redução do alvo)
     await this.dealDamage(target, finalDamage, attacker);
 
-    // 8. Efeitos Pós-Dano no ALVO (reações do ALVO ao receber dano)
-    if (!isSecondHit) {
-        if (target.id === 'water1' && target.specialEffect) { // Blastoise
-            await target.specialEffect(this, target, target);
-        }
-        if (target.id === 'water2' && target.specialEffect) { // Kisame
-            await target.specialEffect(this, target, target);
-        }
-        if (target.id === 'earth3' && target.specialEffect) { // Edward Elric
-            await target.specialEffect(this, target, target);
-        }
-        if (target.id === 'dark2' && target.specialEffect) { // Zeref
-            await target.specialEffect(this, target, target);
-        }
-        if (target.id === 'wind2' && target.specialEffect) { // Aang
-            await target.specialEffect(this, target, target);
-        }
-    }
-    
-    // 9. Efeitos Pós-Ataque do ATACANTE (habilidades que ativam APÓS o ataque)
+    // REMOVIDO: Bloco "8. Efeitos Pós-Dano no ALVO (reações do ALVO ao receber dano)"
+    // Essa lógica agora é tratada exclusivamente dentro da função dealDamage.
+    // As chamadas para Blastoise foram movidas para o bloco de Ataque Conjunto abaixo.
+            
+    // 8. Efeitos Pós-Ataque do ATACANTE (habilidades que ativam APÓS o ataque)
     if (!isSecondHit) {
         if (attacker.id === 'fire4' && attacker.specialEffect) { // Roy Mustang
             await attacker.specialEffect(this, attacker, target);
@@ -956,38 +915,42 @@ performAttack: async function(attacker, target, isSecondHit = false) {
         if (attacker.id === 'earth8' && attacker.specialEffect) { // Pain (Shinra Tensei)
             await attacker.specialEffect(this, attacker, target);
         }
-        // --- ATIVAÇÃO DE ESCANOR E SUKUNA (ATAQUE CONJUNTO) ---
+        // --- ATIVAÇÃO DE ESCANOR, SUKUNA, SASUKE E BLASTOISE (ATAQUE CONJUNTO / REAÇÃO A ATAQUE ALIADO) ---
         const potentialJointAttackers = this.getPlayersCards(attacker.owner).filter(c => 
             c.currentLife > 0 &&         // A carta está viva
             c.id !== attacker.id &&      // Não é o atacante principal
-            !c.hasAttackedThisTurn &&    // Não atacou junto ainda neste turno
-            (c.id === 'fire1' || c.id === 'dark7' || c.id === 'fire8') // É Escanor, Sukuna, Sasuke
+            !c.hasAttackedThisTurn &&    // Não atacou junto/reagiu ainda neste turno
+            (c.id === 'fire1' || c.id === 'dark7' || c.id === 'fire8' || c.id === 'water1') // É Escanor, Sukuna, Sasuke OU Blastoise
         );
 
         for (const jointAttacker of potentialJointAttackers) {
             if (jointAttacker.specialEffect) {
-                const hasAttackedJointly = await jointAttacker.specialEffect(this, jointAttacker, target);
-                if (hasAttackedJointly) {
-                    jointAttacker.hasAttackedThisTurn = true;
+                // Para Blastoise, o specialEffect vai checar se o atacante é um aliado.
+                // Para Escanor/Sukuna/Sasuke, o specialEffect vai verificar se eles atacam junto.
+                const hasAbilityActivated = await jointAttacker.specialEffect(this, jointAttacker, target);
+                if (hasAbilityActivated) {
+                    // Para Blastoise, isso significa que ele se curou.
+                    // Para Escanor/Sukuna/Sasuke, isso significa que eles atacaram junto.
+                    jointAttacker.hasAttackedThisTurn = true; // Marca como tendo agido para evitar múltiplas ativações por turno.
                     if (jointAttacker.id === 'fire8' && this.sasukeAmaterasuSound) {
                         this.sasukeAmaterasuSound.play();
                     }
                 }
             }
         }
-        // --- FIM DA ATIVAÇÃO DE ESCANOR, SUKUNA E SASUKE ---
+        // --- FIM DA ATIVAÇÃO DE ESCANOR, SUKUNA, SASUKE E BLASTOISE ---
     }
     // Habilidade de Sasuke Rinnegan que ataca todos os inimigos (sempre ativa no ataque dele)
     if (attacker.id === 'sasuke_rinnegan' && attacker.specialEffect) {
         await attacker.specialEffect(this, attacker, target);
     }
 
-    // 10. Finalização da Animação e Limpeza
+    // 9. Finalização da Animação e Limpeza
     if (attackerElement) { attackerElement.style.animation = ''; }
     this.isProcessingAttack = false;
 },
-    performHeal: async function(healer, target) {
-          this.isProcessingHeal = true;
+  performHeal: async function(healer, target) {
+    this.isProcessingHeal = true;
     this.healSound.play();
 
     const healerElement = document.getElementById(`card-${healer.id}`);
@@ -1001,7 +964,7 @@ performAttack: async function(attacker, target, isSecondHit = false) {
     if (healer.id === 'water5' && healer.specialEffect) { // Noelle
         healAmount += await healer.specialEffect(this, healer, target);
     }
-            
+    
     // Aplica a cura ao alvo primeiro
     this.healCard(target, healAmount);
     this.addLog(`${healer.name} curou ${healAmount} de vida de ${target.name}. Vida: ${target.currentLife}`);
@@ -1011,26 +974,12 @@ performAttack: async function(attacker, target, isSecondHit = false) {
         await healer.specialEffect(this, healer, target);
     }
     
-    if (healer.id === 'wind7' && healer.specialEffect) { // <--- NOVO: Meimei (Ar) - Causa dano em área
+    if (healer.id === 'wind7' && healer.specialEffect) { // Meimei (Ar) - Causa dano em área
         await healer.specialEffect(this, healer, target);
     }
 
-    if (healer.id === 'light5' && healer.specialEffect) { // Julius Novachrono (Luz) - Purifica e cura
-        await healer.specialEffect(this, healer, target);
-    }
-    if (healer.id === 'dark5' && healer.specialEffect) {
-        // Sung Jin-woo (Dark): Sua habilidade de BUFF TANK já é ativada em startBattlePhase.
-        // Sua habilidade de invocação de Igris é ativada em dealDamage quando um aliado morre.
-        // Se houver algum outro specialEffect de Sung Jin-woo que ative na cura, ele viria aqui.
-        // No momento, o specialEffect de Sung Jin-woo no card.js NÃO espera ser chamado por performHeal.
-        // Verifique se você realmente quer chamar o specialEffect dele aqui.
-        // Se a lógica do specialEffect do dark5 que está no card.js é APENAS para buffar o tank no início da batalha,
-        // então essa linha aqui (healer.id === 'dark5' && healer.specialEffect) pode ser REMOVIDA.
-        // A menos que você tenha adicionado uma nova função de specialEffect para ele que ative na cura.
-        // Pelo que vi no card.js, o specialEffect do Sung Jin-woo é apenas para o BUFF INICIAL NO TANK.
-        // Então, essa linha provavelmente deve ser removida.
-        // await healer.specialEffect(this, healer, target); // <-- REMOVA OU COMENTE ESTA LINHA SE O specialEffect DO SUNG JIN-WOO NÃO FOR DE CURA
-    }
+    // REMOVIDO: Sung Jin-woo (dark5) não ativa habilidade na cura
+    // if (healer.id === 'dark5' && healer.specialEffect) { /* ... */ }
 
     // Animação do alvo (recebendo cura)
     const targetElement = document.getElementById(`card-${target.id}`);
@@ -1054,25 +1003,25 @@ performAttack: async function(attacker, target, isSecondHit = false) {
 
 // ... (todo o seu código anterior)
 
- dealDamage: async function(targetCard, amount, attacker = null) {
+// Dentro da fun\u00e7\u00e3o dealDamage:
+dealDamage: async function(targetCard, amount, attacker = null) {
     let damageToApply = amount;
     let finalDamageReceived = 0;
-    // Esta flag controla se a carta foi "resolvida" (regenerada, transformada, invocada)
-    // e não precisa mais da lógica padrão de "derrotado" no slot DOM.
-    let handledByTransformationOrSummon = false; 
+    let handledByTransformationOrSummon = false; // Esta flag controla se a carta foi "resolvida" (regenerada, transformada, invocada)
+                                                // e não precisa mais da lógica padrão de "derrotado" no slot DOM.
 
     console.log(`%c[DEBUG DEALDAMAGE START] --- Processando Dano ---`, 'background-color: #333; color: white; padding: 2px 5px;');
-    console.log(`%c[DEBUG DEALDAMAGE START] Alvo: ${targetCard.name} (HP: ${targetCard.currentLife}/${targetCard.maxLife}), Dano Inicial: ${damageToApply}, Atacante: ${attacker ? attacker.name : 'N/A'}.`, 'color: #ADD8E6;');
+    console.log(`%c[DEBUG DEALDAMAGE START] Alvo: ${targetCard.name} (HP: <span class="math-inline">\{targetCard\.currentLife\}/</span>{targetCard.maxLife}), Dano Inicial: ${damageToApply}, Atacante: ${attacker ? attacker.name : 'N/A'}.`, 'color: #ADD8E6;');
 
     // 0. LÓGICA DE REDIRECIONAMENTO DE DANO PARA BAN (water7)
     const banCard = this.players[targetCard.owner].team.find(c => c.id === 'water7' && c.currentLife > 0);
     if (targetCard.id !== 'water7' && targetCard.owner === banCard?.owner && banCard && !banCard.hasUsedSpecialAbilityOnce) {
         this.addLog(`${banCard.name} (Agua) se interpõe e sofre o dano no lugar de ${targetCard.name}!`);
         await this.dealDamage(banCard, damageToApply, attacker);
-        this.reRenderCard(targetCard);
-        this.updateUI();
+        // NÃO chame reRenderCard(targetCard) aqui. O target original não é modificado.
+        // A UI para o target original será atualizada no updateUI final.
         console.log(`%c[DEBUG DEALDAMAGE END] Dano redirecionado por Ban. Finalizando esta execução de dealDamage.`, 'color: #ADD8E6;');
-        return;
+        return; // Termina esta execução para o target original, o dano foi redirecionado
     }
 
     // 1. ANIMAÇÃO DE DANO RECEBIDO
@@ -1102,8 +1051,11 @@ performAttack: async function(attacker, target, isSecondHit = false) {
         let dodgeChance = 0;
         if (targetCard.effectsApplied['EsquivaChance']) {
             dodgeChance = targetCard.effectsApplied['EsquivaChance'].value;
-        } else if (targetCard.id === 'kilua_godspeed' && targetCard.specialEffect) {
-            // Kilua Godspeed tem seu próprio specialEffect para esquiva
+        } 
+
+        // Note: O specialEffect do Kilua Godspeed está mais focado em retornar se ele ESQUIVOU ou não
+        // A lógica de Math.random() < 0.5 já está dentro do specialEffect dele.
+        if (targetCard.id === 'kilua_godspeed' && targetCard.specialEffect) {
             const kiluaDodged = await targetCard.specialEffect(this, targetCard, targetCard);
             if (kiluaDodged) {
                 this.addLog(`${targetCard.name} (Vento) esquivou do ataque devido à sua velocidade Godspeed!`);
@@ -1113,12 +1065,10 @@ performAttack: async function(attacker, target, isSecondHit = false) {
                 console.log(`%c[DEBUG DEALDAMAGE END] Kilua Godspeed esquivou, dano zerado.`, 'color: #ADD8E6;');
                 return;
             }
-        }
-
-        if (dodgeChance > 0 && Math.random() < dodgeChance) {
+        } else if (dodgeChance > 0 && Math.random() < dodgeChance) { // Para efeitos de EsquivaChance de Akali
             this.addLog(`${targetCard.name} esquivou do ataque devido ao efeito de Akali!`);
             damageToApply = 0;
-            delete targetCard.effectsApplied['EsquivaChance'];
+            delete targetCard.effectsApplied['EsquivaChance']; // Consome o efeito de Akali
             this.reRenderCard(targetCard);
             this.updateUI();
             console.log(`%c[DEBUG DEALDAMAGE END] Akali esquivou, dano zerado.`, 'color: #ADD8E6;');
@@ -1144,6 +1094,7 @@ performAttack: async function(attacker, target, isSecondHit = false) {
     }
 
     // 3. LÓGICA DO ESCUDO
+    // Ignorado por Kakashi (light4)
     if (damageToApply > 0 && targetCard.effectsApplied['Escudo'] && targetCard.effectsApplied['Escudo'].value > 0 && (attacker === null || attacker.id !== 'light4')) {
         const shieldValue = targetCard.effectsApplied['Escudo'].value;
         let effectiveShield = shieldValue;
@@ -1154,7 +1105,7 @@ performAttack: async function(attacker, target, isSecondHit = false) {
                 this.addLog(`${attacker.name} (Terra) ignorou ${ignoredShield} de Escudo de ${targetCard.name}. Escudo efetivo: ${effectiveShield}.`);
             }
         }
-        
+
         if (effectiveShield > 0) {
             const damageAbsorbedByShield = Math.min(damageToApply, effectiveShield);
             targetCard.effectsApplied['Escudo'].value -= damageAbsorbedByShield;
@@ -1181,30 +1132,21 @@ performAttack: async function(attacker, target, isSecondHit = false) {
     // 5. EFEITOS DE CURA/REFORÇO DO ATACANTE BASEADO NO DANO CAUSADO (Ex: All Might)
     if (attacker && attacker.id === 'all_might' && attacker.specialEffect && finalDamageReceived > 0) {
         console.log(`%c[DEBUG ALL MIGHT DEALDAMAGE] All Might (${attacker.name}) causou ${finalDamageReceived} de dano a ${targetCard.name}. Ativando cura!`, 'color: #fbbf24;');
-        const tempCurrentDamageDealt = this.currentDamageDealt;
-        this.currentDamageDealt = finalDamageReceived;
+        // Salva e restaura currentDamageDealt, pois a cura do All Might usa ele, mas queremos
+        // que essa variável reflita o dano do ataque principal quando performAttack finalizar.
+        const tempCurrentDamageDealt = this.currentDamageDealt; 
+        this.currentDamageDealt = finalDamageReceived; // All Might se cura pelo dano REALMENTE causado.
         await attacker.specialEffect(this, attacker, targetCard);
-        this.currentDamageDealt = tempCurrentDamageDealt;
-        console.log(`%c[DEBUG ALL MIGHT DEALDAMAGE] All Might processou a cura. Sua vida: ${attacker.currentLife}/${attacker.maxLife}.`, 'color: #fbbf24;');
+        this.currentDamageDealt = tempCurrentDamageDealt; // Restaura o valor original.
+        console.log(`%c[DEBUG ALL MIGHT DEALDAMAGE] All Might processou a cura. Sua vida: <span class="math-inline">\{attacker\.currentLife\}/</span>{attacker.maxLife}.`, 'color: #fbbf24;');
     }
 
-    // 7. LÓGICA DE EXECUÇÃO E TRANSFORMAÇÃO DE KILUA (wind8)
-    let wasExecutedByKilua = false;
-    if (attacker && attacker.id === 'wind8' && finalDamageReceived > 0 && targetCard.currentLife > 0 && targetCard.currentLife <= 5) {
-        const kiluaCardInTeam = this.players[attacker.owner].team.find(c => c.id === 'wind8');
-        if (kiluaCardInTeam && !kiluaCardInTeam.hasUsedTransformationAbilityOnce) {
-            this.addLog(`${attacker.name} (Vento) executa ${targetCard.name} com sua passiva de Assassino!`);
-            targetCard.currentLife = 0;
-            await this.transformKiluaToGodspeed(kiluaCardInTeam);
-            wasExecutedByKilua = true;
-            handledByTransformationOrSummon = true;
-        } else {
-            console.log(`%c[DEBUG KILUA] Kilua não executou (já transformou ou não é Kilua).`, 'color: grey;');
-        }
-    }
+    // REMOVIDO: Antiga LÓGICA DE EXECUÇÃO E TRANSFORMAÇÃO DE KILUA (wind8) - Ponto 7
+    // Agora será tratada de forma passiva após todo o dano ser processado.
 
-    // 8. EFEITOS PÓS-DANO NO ALVO (reações do ALVO ao receber dano na vida)
-    if (!wasExecutedByKilua && targetCard.currentLife > 0 && finalDamageReceived > 0) {
+    // 6. EFEITOS PÓS-DANO NO ALVO (reações do ALVO ao receber dano na vida)
+    // Estes efeitos ativam APENAS se a carta não foi executada por Kilua e ainda está viva.
+    if (targetCard.currentLife > 0 && finalDamageReceived > 0) {
         if (targetCard.id === 'earth6' && targetCard.specialEffect) { await targetCard.specialEffect(this, targetCard, null); } // Luffy
         if (targetCard.id === 'fire7' && targetCard.specialEffect) { await targetCard.specialEffect(this, targetCard, attacker); } // Vegeta
         if (targetCard.id === 'earth3' && targetCard.specialEffect) { await targetCard.specialEffect(this, targetCard, attacker); } // Edward Elric
@@ -1213,25 +1155,25 @@ performAttack: async function(attacker, target, isSecondHit = false) {
         if (targetCard.id === 'wind2' && targetCard.specialEffect) { await targetCard.specialEffect(this, targetCard, targetCard); } // Aang
     }
 
-    // 9. VERIFICAÇÃO DE DERROTA E EFEITOS DE MORTE/INVOCAÇÕES/REGENERAÇÕES FINAIS
+    // 7. VERIFICAÇÃO DE DERROTA E EFEITOS DE MORTE/INVOCAÇÕES/REGENERAÇÕES FINAIS
     if (targetCard.currentLife <= 0) {
         this.isCardDefeated = true; // Sinaliza que uma carta foi derrotada
-        
+
         // Lógica de TRANSFORMAÇÃO DO GON (earth7) - Prioridade para transformar
-        console.log(`%c[DEBUG DEALDAMAGE] Verificando transformação de Gon... targetCard: ${targetCard.name}, ID: ${targetCard.id}`, 'color: #DAA520;');
+        console.log(`%c[DEBUG DEALDAMAGE] Verificando transforma\u00e7\u00e3o de Gon... targetCard: ${targetCard.name}, ID: ${targetCard.id}`, 'color: #DAA520;');
         if (targetCard.id === 'earth7' && !targetCard.hasUsedTransformationAbilityOnce) {
-             console.log(`%c[DEBUG DEALDAMAGE] Condições para transformação de Gon atendidas. Chamando transformGonToAdult.`, 'color: #DAA520;');
-             const transformed = await this.transformGonToAdult(targetCard);
-             if (transformed) {
-                 handledByTransformationOrSummon = true;
-                 console.log(`%c[DEBUG DEALDAMAGE] Gon (criança) foi derrotado e transformado com sucesso. handledByTransformationOrSummon = true.`, 'color: green; font-weight: bold;');
-             } else {
-                 console.log(`%c[DEBUG DEALDAMAGE] transformGonToAdult retornou FALSE. Gon não transformou.`, 'color: red;');
-             }
+            console.log(`%c[DEBUG DEALDAMAGE] Condi\u00e7\u00f5es para transforma\u00e7\u00e3o de Gon atendidas. Chamando transformGonToAdult.`, 'color: #DAA520;');
+            const transformed = await this.transformGonToAdult(targetCard);
+            if (transformed) {
+                handledByTransformationOrSummon = true;
+                console.log(`%c[DEBUG DEALDAMAGE] Gon (crian\u00e7a) foi derrotado e transformado com sucesso. handledByTransformationOrSummon = true.`, 'color: green; font-weight: bold;');
+            } else {
+                console.log(`%c[DEBUG DEALDAMAGE] transformGonToAdult retornou FALSE. Gon n\u00e3o transformou.`, 'color: red;');
+            }
         } else {
-            console.log(`%c[DEBUG DEALDAMAGE] Gon não se transformará. ID: ${targetCard.id}, Já usada: ${targetCard.hasUsedTransformationAbilityOnce}`, 'color: #DAA520;');
+            console.log(`%c[DEBUG DEALDAMAGE] Gon n\u00e3o se transformar\u00e1. ID: ${targetCard.id}, J\u00e1 usada: ${targetCard.hasUsedTransformationAbilityOnce}`, 'color: #DAA520;');
         }
-        
+
         // Se a carta original foi derrotada E NÃO FOI TRATADA POR UMA TRANSFORMAÇÃO/INVOCAÇÃO ATÉ AQUI
         if (!handledByTransformationOrSummon) {
             // Lógica de REGENERAÇÃO DO BAN (water7)
@@ -1246,18 +1188,18 @@ performAttack: async function(attacker, target, isSecondHit = false) {
 
             // Lógica de INVOCAÇÃO POR FEITICEIROS AO TER ALIADO DERROTADO
             if (!handledByTransformationOrSummon) {
-                // Lógica de invocação de Mahoraga (por Megumi)
-                const allRemainingPlayersCards = this.getPlayersCards(targetCard.owner);
-                const megumiDying = (targetCard.id === 'dark8');
-
-                if (megumiDying && allRemainingPlayersCards.length === 0 && !targetCard.hasUsedSpecialAbilityOnce) {
+                // Prioridade: Megumi (Mahoraga)
+                const megumiInTeam = this.players[targetCard.owner].team.find(c => c.id === 'dark8' && c.currentLife > 0);
+                // Só invoca Mahoraga se o Megumi que morreu for o *último* aliado vivo do jogador
+                // E se o Megumi vivo do time não tiver usado a habilidade
+                if (targetCard.id === 'dark8' && this.getPlayersCards(targetCard.owner).length === 0 && megumiInTeam && !megumiInTeam.hasUsedSpecialAbilityOnce) {
                     this.addLog(`${targetCard.name} (Dark) é o \u00fanico sobrevivente e foi derrotado! Ele se sacrifica para invocar o General Mahoraga!`);
-                    await this.summonMahoraga(targetCard);
-                    targetCard.hasUsedSpecialAbilityOnce = true;
+                    await this.summonMahoraga(targetCard); // targetCard é o Megumi derrotado, para pegar a posição
+                    megumiInTeam.hasUsedSpecialAbilityOnce = true; // Marca a habilidade do Megumi como usada
                     handledByTransformationOrSummon = true;
                 }
 
-                // Prioridade: Yugi (Mago Negro)
+                // Próxima prioridade: Yugi (Mago Negro)
                 if (!handledByTransformationOrSummon) {
                     const yugiInTeam = this.players[targetCard.owner].team.find(c => (c.id === 'light6' || c.id === 'yami_yugi') && c.currentLife > 0);
                     if (yugiInTeam && !yugiInTeam.hasUsedSummonAbilityOnce) {
@@ -1269,7 +1211,7 @@ performAttack: async function(attacker, target, isSecondHit = false) {
                     }
                 }
 
-                // Sung Jin-woo (Igris)
+                // Última prioridade: Sung Jin-woo (Igris)
                 if (!handledByTransformationOrSummon) {
                     const sungJinWooInTeam = this.players[targetCard.owner].team.find(c => c.id === 'dark5' && c.currentLife > 0);
                     if (sungJinWooInTeam && !sungJinWooInTeam.hasUsedSpecialAbilityOnce) {
@@ -1284,18 +1226,17 @@ performAttack: async function(attacker, target, isSecondHit = false) {
                 }
             }
         }
-        
-        // --- Processamento de Efeitos "On-Death" e Remoção Final ---
 
-        // LÓGICA DO LEVI (water8) - Ativa quando QUALQUER ALIADO morre
-        const leviInTeam = this.players[targetCard.owner].team.find(c => c.id === 'water8' && c.currentLife > 0);
-        if (leviInTeam && leviInTeam.specialEffect && targetCard.owner === leviInTeam.owner) {
-            console.log(`%c[DEBUG DEALDAMAGE - LEVI] Levi está presente no time de ${targetCard.owner} e ${targetCard.name} morreu. Ativando habilidade.`, 'color: #3b82f6;');
-            await leviInTeam.specialEffect(this, leviInTeam, targetCard);
-        }
-
-        // EFEITOS DE MORTE DE OUTRAS CARTAS (ativam ao morrer)
+        // --- Processamento de Efeitos "On-Death" e Remoção Final (se n\u00e3o foi regenerada/transformada/invocada) ---
         if (!handledByTransformationOrSummon) {
+            // LÓGICA DO LEVI (water8) - Ativa quando QUALQUER ALIADO morre
+            const leviInTeam = this.players[targetCard.owner].team.find(c => c.id === 'water8' && c.currentLife > 0);
+            if (leviInTeam && leviInTeam.specialEffect && targetCard.owner === leviInTeam.owner) {
+                console.log(`%c[DEBUG DEALDAMAGE - LEVI] Levi está presente no time de ${targetCard.owner} e ${targetCard.name} morreu. Ativando habilidade.`, 'color: #3b82f6;');
+                await leviInTeam.specialEffect(this, leviInTeam, targetCard);
+            }
+
+            // EFEITOS DE MORTE DE OUTRAS CARTAS (ativam ao morrer)
             if (targetCard.id === 'fire3' && targetCard.specialEffect) { // Deidara
                 await targetCard.specialEffect(this, targetCard, targetCard);
             }
@@ -1317,15 +1258,18 @@ performAttack: async function(attacker, target, isSecondHit = false) {
             }
             this.addLog(`${targetCard.name} foi removido do campo.`);
         }
-        
-        this.isCardDefeated = false;
+
+        this.isCardDefeated = false; // Reseta a flag de derrota
     } else {
         // Se a carta não foi derrotada, apenas re-renderiza para atualizar vida/efeitos
-        console.log(`%c[DEBUG DEALDAMAGE] Carta não derrotada. Re-renderizando ${targetCard.name}.`, 'color: #6A5ACD;');
+        console.log(`%c[DEBUG DEALDAMAGE] Carta n\u00e3o derrotada. Re-renderizando ${targetCard.name}.`, 'color: #6A5ACD;');
         this.reRenderCard(targetCard);
     }
 
-    // 10. ATUALIZAÇÃO FINAL DA UI
+    // 8. ATIVAÇÃO DA HABILIDADE PASSIVA DE KILUA (APÓS QUALQUER DANO SER RESOLVIDO)
+    await this.checkKiluaExecution(); // Nova chamada aqui
+
+    // 9. ATUALIZAÇÃO FINAL DA UI
     this.updateUI();
     console.log(`%c[DEBUG DEALDAMAGE END] --- Fim do Processamento de Dano ---`, 'background-color: #333; color: white; padding: 2px 5px;');
 },
@@ -1335,15 +1279,36 @@ performAttack: async function(attacker, target, isSecondHit = false) {
         this.updateUI(); 
     },
 
-    applyEffect: function(card, effectName, turns, value) {
+   applyEffect: function(card, effectName, turns, value) {
+    console.log(`%c[DEBUG EFFECTS] Tentando aplicar efeito '${effectName}' a ${card.name}.`, 'color: #4682B4;');
     let finalTurns = turns;
-    // Se o efeito é 'Escudo' ou 'Partitura', marcamos como -1 (permanente)
-    // assim ele não será removido automaticamente por turnos.
     if (effectName === 'Escudo' || effectName === 'Partitura') {
         finalTurns = -1; // -1 significa "dura para sempre"
     }
 
-    card.effectsApplied[effectName] = { turns: finalTurns, value: value }; // Usamos finalTurns aqui
+    // AQUI: 'EsquivaChance' foi removido da lista de debuffs, pois é um buff.
+    const isDebuff = ['Amaldiçoar', 'Queimar', 'Enraizar', 'Atordoar', 'Partitura'].includes(effectName);
+
+    // Lógica para Toshinori Yagi (light8)
+    const toshinoriInTeam = this.players[card.owner].team.find(c => c.id === 'light8' && c.currentLife > 0);
+
+    if (isDebuff && toshinoriInTeam && !toshinoriInTeam.hasUsedTransformationAbilityOnce) {
+        this.addLog(`${toshinoriInTeam.name} (Luz) passivamente removeu o efeito '${effectName}' de ${card.name}!`);
+        delete card.effectsApplied[effectName]; // Remove o debuff
+        if (effectName === 'Amaldiçoar' || effectName === 'Enraizar' || effectName === 'Atordoar') {
+            card.canAttack = true; // Permite atacar novamente
+        }
+        this.reRenderCard(card); // Re-renderiza o aliado para mostrar a remoção do debuff
+
+        // ATENÇÃO: Chama a transformação de Toshinori após remover o debuff
+        this.transformToshinoriToAllMight(toshinoriInTeam);
+
+        console.log(`%c[DEBUG TOSHINORI YAGI] Efeito '${effectName}' removido de ${card.name} por ${toshinoriInTeam.name}.`, 'color: #fbbf24;');
+        return; // Sai da função, o efeito não é aplicado
+    }
+
+    // Se não foi removido por Toshinori ou ele já transformou, aplica o efeito normalmente
+    card.effectsApplied[effectName] = { turns: finalTurns, value: value };
     if (effectName === 'Amaldiçoar' || effectName === 'Enraizar' || effectName === 'Atordoar') {
         card.canAttack = false;
     }
@@ -2025,4 +1990,33 @@ transformGonToAdult: async function(gonCardInstance) {
     console.warn(`%c[DEBUG GON TRANSF] Erro: Gon original não encontrado no time (${gonCardInstance.owner}) na posição ${gonCardInstance.position} para transformação.`, 'color: red;');
     return false;
 },
+   checkKiluaExecution: async function() {
+        console.log(`%c[DEBUG KILUA CHECK] Verificando execução passiva de Kilua em ambos os lados...`, 'color: #00CED1;');
+        for (const playerId in this.players) {
+            const kiluaCard = this.players[playerId].team.find(c => c.id === 'wind8' && c.currentLife > 0);
+
+            if (kiluaCard && !kiluaCard.hasUsedTransformationAbilityOnce) {
+                const opponentPlayerId = this.getOpponent(playerId);
+                const opponentCards = this.getPlayersCards(opponentPlayerId);
+
+                for (const enemy of opponentCards) {
+                    if (enemy.currentLife > 0 && enemy.currentLife <= 5) { // Inimigo vivo com 5 ou menos de vida
+                        this.addLog(`${kiluaCard.name} (Vento) detectou ${enemy.name} com vida baixa e ativa sua execução passiva!`);
+                        
+                        enemy.currentLife = 0; // Executa o inimigo
+                        this.addLog(`${enemy.name} foi executado por ${kiluaCard.name}!`);
+                        
+                        this.removeCardFromBattlefield(enemy);
+                        this.playerDefeatedCard(enemy);
+
+                        await this.transformKiluaToGodspeed(kiluaCard);
+                        
+                        this.updateUI(); 
+                        return true; 
+                    }
+                }
+            }
+        }
+        return false;
+    },
 };

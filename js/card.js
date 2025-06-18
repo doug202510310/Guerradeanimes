@@ -151,7 +151,7 @@ export const allCards = [
         }
         return 0;
     }),
-    new Card('water4', 'Tomioka', 'Damage', [13, 17], 20, 'Agua', 'Agua: Pode atacar o Healer inimigo mesmo com o Tank ainda vivo.', null),
+    new Card('water4', 'Tomioka', 'Damage', [8, 10], 20, 'Agua', 'Agua: Pode atacar o Healer inimigo mesmo com o Tank ainda vivo.', null),
     new Card('water5', 'Noelle', 'Healer', [8, 10], 30, 'Agua', 'Agua: Ao curar o aliado, aumenta a cura em 10 quando tem  outro aliado de Água no time.', async (game, self, target) => {
         if (game.isProcessingHeal && self.id === game.selectedAttacker.id && target) {
             const waterAllies = game.getPlayersCards(self.owner).filter(c => c.element === 'Agua' && c.id !== self.id);
@@ -456,7 +456,7 @@ new Card('earth7', 'Gon', 'Damage', [5, 6], 15, 'Terra', 'Terra: Ao ser derrotad
         return false;
     }, 'img/earth7.png'), // Certifique-se de ter 'img/earth7.png'
 
-    new Card('earth8', 'Pain', 'Damage', [6, 8], 22, 'Terra', 'Terra: Ataca todos os inimigos com seu Shinra Tensei.', async (game, self, target) => {
+    new Card('earth8', 'Pain', 'Damage', [5, 7], 22, 'Terra', 'Terra: Ataca todos os inimigos com seu Shinra Tensei.', async (game, self, target) => {
         // Este specialEffect será chamado quando Pain for selecionado para atacar.
         // Ele vai aplicar dano a TODOS os inimigos.
         console.log(`%c[DEBUG PAIN] Habilidade de Pain (Shinra Tensei) ativada!`, 'color: #8B4513; font-weight: bold;'); // Marrom para Terra
@@ -664,7 +664,7 @@ new Card('wind7', 'Meimei', 'Healer', [12, 14], 22, 'Ar', 'Ar: Sempre que Meimei
             }
         }
     }),
-    new Card('dark3', 'Madara', 'Damage', [16, 19], 21, 'Dark', 'Dark: Sempre que Madara derrota uma criatura inimiga, ele se cura em 5 HP e aumenta seu ataque mínimo e máximo em 2 permanentemente.', async (game, self, target) => {
+    new Card('dark3', 'Madara', 'Damage', [16, 20], 21, 'Dark', 'Dark: Sempre que Madara derrota uma criatura inimiga, ele se cura em 5 HP e aumenta seu ataque mínimo e máximo em 2 permanentemente.', async (game, self, target) => {
         if (game.isCardDefeated && self.id === game.selectedAttacker.id && target.currentLife <= 0) {
             game.healCard(self, 5); 
             self.attackMin += 2; 
@@ -673,7 +673,7 @@ new Card('wind7', 'Meimei', 'Healer', [12, 14], 22, 'Ar', 'Ar: Sempre que Meimei
             game.updateUI();
         }
     }),
-    new Card('dark4', 'Itachi', 'Damage', [10, 12], 22, 'Dark', 'Dark: Pode atacar diretamente qualquer criatura inimiga, ignorando a regra de Tanks.', null),
+    new Card('dark4', 'Itachi', 'Damage', [8, 10], 22, 'Dark', 'Dark: Pode atacar diretamente qualquer criatura inimiga, ignorando a regra de Tanks.', null),
     new Card('dark5', 'Sung Jin-woo', 'Feiticeiro', [5, 7], 33, 'Dark', 'Dark: Ao iniciar a batalha, concede seu ataque (5-7) ao Tank aliado mais ferido. Habilidade passiva: Ao ter um aliado derrotado, invoca a sombra Igris (ATK 10-13, VIDA 25) no lugar dele (uma vez por partida).', async (game, self, target) => {
     // ESTE specialEffect agora será APENAS para o Buff de Ataque no Tank (ativação: início da batalha)
     console.log(`%c[DEBUG SUNG JIN-WOO - EFFECT] Habilidade de Feiticeiro (BUFF TANK) verificada. Dono: %c${self.owner}%c, Vida: %c${self.currentLife}`, 'color: purple;', 'color: yellow;', 'color: purple;', 'color: yellow;');
@@ -768,15 +768,35 @@ new Card('dark6', 'Merlin', 'Healer', [11, 12], 30, 'Dark', 'Dark: Para curar um
         }
         return false;
     }, 'img/dark7.png'), // Certifique-se de ter 'img/dark7.png'
-new Card('dark8', 'Megumi', 'Feiticeiro', [5, 7], 30, 'Dark', 'Dark: Passivo: Sempre que um ataque acontece (aliado ou inimigo), Megumi drena 1 de vida de todos os inimigos. Se for o único aliado vivo, se sacrifica para invocar Mahoraga.', async (game, self, target) => {
-    // Este specialEffect será ativado em dois cenários:
-    // 1. Passivo de dreno: Chamado em game.performAttack (para drenar)
+new Card('dark8', 'Megumi', 'Feiticeiro', [5, 7], 30, 'Dark', 'Dark: Passivo: No in\u00edcio do turno do jogador, Megumi drena 1 de vida de todos os inimigos. Se for o único aliado vivo, se sacrifica para invocar Mahoraga.', async (game, self, target) => {
+    // Este specialEffect ser\u00e1 ativado em dois cen\u00e1rios:
+    // 1. Passivo de dreno: Chamado em game.processTurnStartEffects (para drenar)
     // 2. Sacrifício/Invocação: Chamado em game.endTurn (para checar "último vivo")
 
-    // Lógica para o efeito de dreno passivo
-    if (game.isProcessingAttack && game.selectedAttacker) { // Garante que um ataque está acontecendo
-        // ... (lógica de dreno de 1 de vida de todos os inimigos) ...
-        return true; // Indica que o dreno foi ativado
+    // Lógica para o efeito de dreno passivo (uma vez por turno, no in\u00edcio do turno)
+    // A condição de isProcessingAttack foi removida daqui, pois a chamada vir\u00e1 de processTurnStartEffects.
+    // O specialEffect do Megumi agora só executa o dreno quando chamado neste contexto.
+
+    // Apenas drena se Megumi est\u00e1 vivo e \u00e9 o jogador do turno atual
+    if (game.currentPhase === 'battle' && self.currentLife > 0 && game.currentPlayerId === self.owner) {
+        console.log(`%c[DEBUG MEGUMI DRAIN] Megumi (${self.name}) ativando dreno passivo de 1 HP em todos os inimigos!`, 'color: darkred; font-weight: bold;');
+        
+        const opponentCards = game.getPlayersCards(game.getOpponent(self.owner)).filter(c => c.currentLife > 0);
+        const drainAmount = 1;
+
+        if (opponentCards.length > 0) {
+            game.addLog(`${self.name} (Dark) drena ${drainAmount} de vida de todos os inimigos!`);
+            for (const enemy of opponentCards) {
+                await game.dealDamage(enemy, drainAmount, self); // Megumi causa dano
+                game.addLog(`  ${enemy.name} recebeu ${drainAmount} de dano de Megumi.`);
+                console.log(`%c[DEBUG MEGUMI DRAIN] ${enemy.name} atingido por ${drainAmount} de dano.`, 'color: darkred;');
+            }
+            game.updateUI(); // Atualiza a UI após todos os drenos
+            return true; // Indica que o dreno foi ativado
+        } else {
+            game.addLog(`${self.name} (Dark) não encontrou inimigos para drenar vida.`);
+            console.log(`%c[DEBUG MEGUMI DRAIN] Nenhum inimigo para drenar.`, 'color: darkred;');
+        }
     }
     return false; // Ninguém para drenar ou não é o momento do dreno
 }, 'img/dark8.png'),
@@ -816,14 +836,14 @@ new Card('light2', 'Naruto', 'Tank', [4, 5], 52, 'Luz', 'Luz: No início do turn
         console.log(`%c[CHECKPOINT 10] Condições de ativação do Naruto são FALSAS. Detalhes: Fase=%c${game.currentPhase}%c, VidaNaruto=%c${self.currentLife}`, 'color: red;', 'color: yellow;', 'color: red;', 'color: yellow;', 'color: red;', 'color: yellow;'); // Mensagem detalhada e colorida
     }
 }),
-    new Card('light3', 'Gojo', 'Damage', [14, 17], 22, 'Luz', 'Luz: Tem 30% de dar o dano dobrado, sem aplicar o multiplicador ofensivo de dano de elemento para ele.', async (game, self, target) => {
+    new Card('light3', 'Gojo', 'Damage', [14, 18], 22, 'Luz', 'Luz: Tem 30% de dar o dano dobrado, sem aplicar o multiplicador ofensivo de dano de elemento para ele.', async (game, self, target) => {
         if (game.isProcessingAttack && self.id === game.selectedAttacker.id && Math.random() < 0.30) {
             game.addLog(`${self.name} (Luz) DOBROU seu dano!`);
             return 2; 
         }
         return 1; 
     }),
-    new Card('light4', 'Kakashi', 'Damage', [12, 15], 23, 'Luz', 'Luz: O ataque de Kakashi ignora todos os efeitos de "Escudo" e "Esquiva" do alvo.', null),
+    new Card('light4', 'Kakashi', 'Damage', [18, 20], 23, 'Luz', 'Luz: O ataque de Kakashi ignora todos os efeitos de "Escudo" e "Esquiva" do alvo.', null),
     new Card('light5', 'Julius Novachrono', 'Healer', [12, 15], 30, 'Luz', 'Luz: Uma vez por partida, Julius Novachrono pode escolher um aliado para remover todos os efeitos negativos (ex: Amaldiçoar, Queimar, Enraizar, Atordoar) dele e curá-lo em 10 HP.', async (game, self, target) => {
         if (game.currentPhase === 'battle' && game.currentPlayerId === self.owner && !self.hasUsedSpecialAbilityOnce) {
             if (target) {
@@ -850,7 +870,7 @@ new Card('light2', 'Naruto', 'Tank', [4, 5], 52, 'Luz', 'Luz: No início do turn
         }
         return false; 
     }),
-    new Card('light6', 'Yugi Muto', 'Feiticeiro', [5, 7], 33, 'Luz', 'Luz: Ao iniciar a batalha, se transforma em Faraó Yami Yugi (muda imagem/nome) e concede 5 de vida máxima ao Tank aliado. Habilidade passiva: Ao ter um aliado derrotado, invoca o Mago Negro (ATK 5-7, VIDA 15, Dark, causa 7 de dano aos inimigos da fileira de trás) no lugar dele (uma vez por partida).', async (game, self, target) => {
+    new Card('light6', 'Yugi Muto', 'Feiticeiro', [5, 7], 33, 'Luz', 'Luz: Ao iniciar a batalha, se transforma em Faraó Yami Yugi (muda imagem/nome) e concede 10 de vida máxima ao Tank aliado. Habilidade passiva: Ao ter um aliado derrotado, invoca o Mago Negro (ATK 5-7, VIDA 15, Dark, causa 7 de dano aos inimigos da fileira de trás) no lugar dele (uma vez por partida).', async (game, self, target) => {
     // === LÓGICA DE TRANSFORMAÇÃO E BUFF NO INÍCIO DA BATALHA ===
     // Esta parte do specialEffect de Yugi é ativada no INÍCIO DA BATALHA (startBattlePhase).
     // Ela deve se ativar apenas UMA VEZ por partida.
@@ -892,14 +912,14 @@ new Card('light2', 'Naruto', 'Tank', [4, 5], 52, 'Luz', 'Luz: No início do turn
             // Seleciona o tank aliado mais ferido (com menor porcentagem de vida)
             const targetTank = tankAllies.sort((a, b) => (a.currentLife / a.maxLife) - (b.currentLife / b.maxLife))[0];
 
-            targetTank.maxLife += 5;   // Aumenta a vida máxima
-            targetTank.currentLife += 5; // Cura também para não ficar com vida desproporcional à nova máxima
+            targetTank.maxLife += 10;   // Aumenta a vida máxima
+            targetTank.currentLife += 10; // Cura também para não ficar com vida desproporcional à nova máxima
             if (targetTank.currentLife > targetTank.maxLife) { // Garante que não exceda a nova vida máxima
                 targetTank.currentLife = targetTank.maxLife;
             }
 
-            game.addLog(`${self.name} concedeu 5 de vida máxima a ${targetTank.name} (Tank)!`);
-            console.log(`%c[DEBUG YUGI - BUFF TANK] ${targetTank.name} ganhou 5 de vida máxima. Nova vida: ${targetTank.currentLife}/${targetTank.maxLife}.`, 'color: gold;');
+            game.addLog(`${self.name} concedeu 10 de vida máxima a ${targetTank.name} (Tank)!`);
+            console.log(`%c[DEBUG YUGI - BUFF TANK] ${targetTank.name} ganhou 10 de vida máxima. Nova vida: ${targetTank.currentLife}/${targetTank.maxLife}.`, 'color: gold;');
         } else {
             game.addLog(`${self.name} não encontrou Tank aliado para conceder vida máxima.`);
             console.log(`%c[DEBUG YUGI - BUFF TANK] Nenhum Tank aliado encontrado para buff de vida.`, 'color: gold;');
@@ -925,13 +945,13 @@ new Card('light2', 'Naruto', 'Tank', [4, 5], 52, 'Luz', 'Luz: No início do turn
     return false; // Retorna false se a habilidade de início de batalha não foi ativada.
                   // Ou se esta chamada não é para a habilidade de início de batalha.
 }),
-new Card('light7', 'Goku', 'Damage', [6, 8], 22, 'Luz', 'Luz: Ataca todos os inimigos com seu Kamehameha.', async (game, self, target) => {
+new Card('light7', 'Goku', 'Damage', [5, 7], 22, 'Luz', 'Luz: Ataca todos os inimigos com seu Kamehameha.', async (game, self, target) => {
     // Este specialEffect será chamado APÓS a fase de cálculo de dano inicial em performAttack
     // Ele vai aplicar dano a TODOS os inimigos.
     console.log(`%c[DEBUG GOKU] Habilidade de Goku (Kamehameha) ativada!`, 'color: orange;', 'font-weight: bold;');
 
-    if (game.isProcessingAttack && self.id === game.selectedAttacker.id) { // Garante que \u00e9 Goku e que ele est\u00e1 atacando
-        game.addLog(`${self.name} (Luz) lan\u00e7a seu Kamehameha!`);
+    if (game.isProcessingAttack && self.id === game.selectedAttacker.id) { // Garante que é Goku e que ele está atacando
+        game.addLog(`${self.name} (Luz) lança seu Kamehameha!`);
 
         const opponentCards = game.getPlayersCards(game.getOpponent(self.owner)).filter(c => c.currentLife > 0);
 
@@ -1027,7 +1047,7 @@ export const magoNegroCardData = {
             return true;
         }
         return false;
-    }, // <-- Adiciona a vírgula aqui
+    }, 
 };
     export const gonAdultoCardData = {
     id: 'gonadulto', // ID único para Gon Adulto
@@ -1049,7 +1069,7 @@ export const mahoragaCardData = {
     attackRange: [10, 15],
     maxLife: 30,
     element: 'Dark', // Mahoraga é Dark
-    effectDescription: 'Dark: Causa 5 de dano a todos os inimigos ao ser invocado.',
+    effectDescription: 'Dark: Causa 10 de dano a todos os inimigos ao ser invocado.',
     specialEffect: async (game, self, target) => { // Efeito que ativa na invocação
         // Este specialEffect será chamado imediatamente após Mahoraga ser invocado.
         if (!self.hasUsedSpecialAbilityOnce) { // Garante que ative apenas uma vez por invocação
@@ -1062,7 +1082,7 @@ export const mahoragaCardData = {
                 console.warn("Som do Mahoraga não configurado.");
             }
 
-            const damageAmount = 5;
+            const damageAmount = 10;
             const opponentCards = game.getPlayersCards(game.getOpponent(self.owner)).filter(c => c.currentLife > 0);
 
             if (opponentCards.length > 0) {
@@ -1089,10 +1109,10 @@ export const kiluaGodspeedCardData = {
     attackRange: [13, 16],
     maxLife: 20,
     element: 'Wind', // Kilua Godspeed é Wind
-    effectDescription: 'Wind: 50% de chance de esquivar de ataques.',
+    effectDescription: 'Wind: 60% de chance de esquivar de ataques.',
     specialEffect: async (game, self, target) => {
-      // Lógica de esquiva (50% de chance)
-      if (Math.random() < 0.5) {
+      // Lógica de esquiva (60% de chance)
+      if (Math.random() < 0.6) {
         game.addLog(`${self.name} (Vento) esquivou do ataque!`);
         return true; // Indica que esquivou
       }
