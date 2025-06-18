@@ -452,7 +452,7 @@ new Card('water7', 'Ban', 'Tank', [2, 4], 50, 'Agua', 'Agua: Ele sofre dano no l
     console.log(`%c[DEBUG LUFFY] Luffy n\u00e3o aumentou ataque: Derrotado.`, 'color: red;');
     return false;
 }, 'img/earth6.png'),
-new Card('earth7', 'Gon', 'Damage', [5, 6], 15, 'Terra', 'Terra: Ao ser derrotado, ele se transforma em Gon Adulto.', async (game, self, target) => {
+new Card('earth7', 'Gon', 'Damage', [5, 6], 10, 'Terra', 'Terra: Ao ser derrotado, ele se transforma em Gon Adulto.', async (game, self, target) => {
         // Este specialEffect será chamado quando Gon (criança) for derrotado.
         console.log(`%c[DEBUG GON CRIANÇA] Habilidade de transforma\u00e7\u00e3o de Gon verificada. Derrotado: %c${self.name}%c.`, 'color: #8B4513;', 'color: yellow;', 'color: #8B4513;'); // Marrom para Terra
 
