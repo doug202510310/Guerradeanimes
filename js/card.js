@@ -387,7 +387,7 @@ new Card('water7', 'Ban', 'Tank', [2, 4], 50, 'Agua', 'Agua: Ele sofre dano no l
     },'img/fire8.png'),
 
     // Terra
-    new Card('earth1', 'Gaara', 'Tank', [1, 3], 45, 'Terra', 'Terra: Quando Gaara recebe dano, ele tem 50% de chance de reduzir esse dano em 5.', async (game, self, target) => {
+    new Card('earth1', 'Gaara', 'Tank', [6, 9], 45, 'Terra', 'Terra: Quando Gaara recebe dano, ele tem 50% de chance de reduzir esse dano em 5.', async (game, self, target) => {
         if (game.isProcessingAttack && self.id === target.id && Math.random() < 0.50) {
             game.addLog(`${self.name} (Terra) reduziu 5 de dano recebido!`);
             return -5; 
