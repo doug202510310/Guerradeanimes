@@ -729,7 +729,7 @@ if (uzuiPlayer2 && uzuiPlayer2.specialEffect && !uzuiPlayer2.hasUsedSpecialAbili
     this.updateUI(); // ATUALIZAÇÃO DA UI UMA ÚNICA VEZ NO FINAL DA FUNÇÃO
 },
 
-  processAction: async function(actionType) {
+ processAction: async function(actionType) {
     try {
         if (!this.selectedAttacker || !this.selectedTarget) {
             this.addLog("Selecione uma carta sua e um alvo primeiro.");
@@ -753,7 +753,8 @@ if (uzuiPlayer2 && uzuiPlayer2.specialEffect && !uzuiPlayer2.hasUsedSpecialAbili
 
         } else if (actionType === 'heal') {
             // Lógica específica para Merlin (dark6)
-            if (this.selectedAttatcher.id === 'dark6') { // Se o atacante é a Merlin
+            // AQUI ESTAVA O ERRO DE DIGITAÇÃO: 'this.selectedAttatcher' corrigido para 'this.selectedAttacker'
+            if (this.selectedAttacker.id === 'dark6') { // Se o atacante é a Merlin
                 console.log(`%c[DEBUG PROCESSACTION] Merlin selecionada para DRENAR CURA.`, 'color: magenta;');
                 await this.selectedAttacker.specialEffect(this, this.selectedAttacker, this.selectedTarget); // Chama o specialEffect da Merlin
             }

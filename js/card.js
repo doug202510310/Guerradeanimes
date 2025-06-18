@@ -169,7 +169,7 @@ export const allCards = [
         }
         return 0;
     }),
-    new Card('water4', 'Tomioka', 'Damage', [8, 10], 20, 'Agua', 'Agua: Pode atacar o Healer inimigo mesmo com o Tank ainda vivo.', null),
+    new Card('water4', 'Tomioka', 'Damage', [6, 12], 20, 'Agua', 'Agua: Pode atacar o Healer inimigo mesmo com o Tank ainda vivo.', null),
     new Card('water5', 'Noelle', 'Healer', [13, 15], 30, 'Agua', 'Agua: Ao curar o aliado, aumenta a cura em 10 quando tem  outro aliado de Água no time.', async (game, self, target) => {
         if (game.isProcessingHeal && self.id === game.selectedAttacker.id && target) {
             const waterAllies = game.getPlayersCards(self.owner).filter(c => c.element === 'Agua' && c.id !== self.id);
@@ -262,7 +262,7 @@ new Card('water7', 'Ban', 'Tank', [2, 4], 50, 'Agua', 'Agua: Ele sofre dano no l
             }
         }
     }),
-    new Card('fire3', 'Deidara', 'Damage', [13, 17], 23, 'Fogo', 'Fogo: Se morrer ele causa dano igual a 15 a um monstro inimigo aleatório.', async (game, self, target) => {
+    new Card('fire3', 'Deidara', 'Damage', [10, 17], 23, 'Fogo', 'Fogo: Se morrer ele causa dano igual a 15 a um monstro inimigo aleatório.', async (game, self, target) => {
         if (game.isCardDefeated && self.currentLife <= 0) {
             const enemyCards = game.getPlayersCards(game.getOpponent(self.owner)).filter(c => c.currentLife > 0);
             if (enemyCards.length > 0) {
@@ -290,7 +290,7 @@ new Card('water7', 'Ban', 'Tank', [2, 4], 50, 'Agua', 'Agua: Ele sofre dano no l
             }
         }
     }),
-    new Card('fire5', 'Rengoku', 'Healer', [10, 15], 32, 'Fogo', 'Fogo: Se tem outro aliado de Fogo no time ele pode atacar o inimigo e o dano causado cura um aliado ferido aleatório.', async (game, self, target) => {
+    new Card('fire5', 'Rengoku', 'Healer', [12, 17], 32, 'Fogo', 'Fogo: Se tem outro aliado de Fogo no time ele pode atacar o inimigo e o dano causado cura um aliado ferido aleatório.', async (game, self, target) => {
         if (game.isProcessingAttack && self.id === game.selectedAttacker.id) {
             const fireAllies = game.getPlayersCards(self.owner).filter(c => c.element === 'Fogo' && c.id !== self.id && c.currentLife > 0);
             if (fireAllies.length >= 1) { 
@@ -307,7 +307,7 @@ new Card('water7', 'Ban', 'Tank', [2, 4], 50, 'Agua', 'Agua: Ele sofre dano no l
         }
         return false;
     }),
-    new Card('fire6', 'Benimaru', 'Damage', [12, 14], 22, 'Fogo', 'Fogo: Aumenta em 3-3 de ataque para cada personagem de Fogo no seu time.', async (game, self, target) => {
+    new Card('fire6', 'Benimaru', 'Damage', [13, 15], 22, 'Fogo', 'Fogo: Aumenta em 3-3 de ataque para cada personagem de Fogo no seu time.', async (game, self, target) => {
         // Este specialEffect será chamado no INÍCIO DO TURNO do jogador de Benimaru.
         // Ele precisa recalcular o bônus de ataque com base nos aliados de Fogo presentes.
         
@@ -340,26 +340,23 @@ new Card('water7', 'Ban', 'Tank', [2, 4], 50, 'Agua', 'Agua: Ele sofre dano no l
         }
         return false;
     }, 'img/fire6.png'), // Certifique-se de ter 'img/fire6.png'
-    new Card('fire7', 'Vegeta', 'Tank', [4, 6], 52, 'Fogo', 'Fogo: Diminui o ataque do inimigo que o atacar em 2-2 (mínimo de 10).', async (game, self, currentAttackerCard) => { // <-- MUDE 'target' para 'currentAttackerCard' para clareza
-    // Este specialEffect será chamado APÓS Vegeta receber dano
-    console.log(`%c[DEBUG VEGETA] Habilidade de Vegeta (Redu\u00e7\u00e3o de ATK) verificada. Alvo de ataque: %c${self.name}%c.`, 'color: #FF4500;', 'color: yellow;', 'color: #FF4500;');
+  new Card('fire7', 'Vegeta', 'Tank', [6, 10], 50, 'Fogo', 'Fogo: Ao ser atacado, Vegeta contra-ataca o inimigo, causando 100% do seu pr\u00f3prio dano.', async (game, self, attacker) => {
+    // Este specialEffect ser\u00e1 chamado AP\u00d3S Vegeta receber dano
+    console.log(`%c[DEBUG VEGETA] Habilidade de Vegeta (Contra-ataque) verificada. Alvo de ataque: %c${self.name}%c.`, 'color: #FF4500;', 'color: yellow;', 'color: #FF4500;'); // Laranja avermelhado para Fogo
 
-    // Verifica se Vegeta está vivo e se há um atacante válido que não seja ele mesmo
-    if (self.currentLife > 0 && currentAttackerCard && currentAttackerCard.owner !== self.owner && currentAttackerCard.currentLife > 0) {
-        // A condição self.id === target.id (do seu código original) foi removida,
-        // pois esta habilidade é chamada em dealDamage, onde 'self' É O VEGETA,
-        // e 'currentAttackerCard' É O ATACANTE, que já foi passado corretamente.
+    // Garante que Vegeta est\u00e1 vivo, que h\u00e1 um atacante v\u00e1lido e que este atacante n\u00e3o \u00e9 o pr\u00f3prio Vegeta
+    if (self.currentLife > 0 && attacker && attacker.owner !== self.owner && attacker.currentLife > 0) {
+        // O dano do contra-ataque agora \u00e9 o dano normal do Vegeta (100%)
+        // Gerar um dano aleat\u00f3rio entre attackMin e attackMax (incluindo b\u00f4nus tempor\u00e1rio)
+        let damageToAttacker = Math.floor(Math.random() * (self.attackMax + self.tempAttackBonus - (self.attackMin + self.tempAttackBonus) + 1)) + (self.attackMin + self.tempAttackBonus);
 
-        const reductionAmount = 2; // Diminui em 2-2 o ataque
-
-        // Aplica a redução no ataque mínimo e máximo do atacante
-        currentAttackerCard.attackMin = Math.max(10, currentAttackerCard.attackMin - reductionAmount); // Mínimo de 10
-        currentAttackerCard.attackMax = Math.max(10, currentAttackerCard.attackMax - reductionAmount); // Mínimo de 10
-
-        game.addLog(`${self.name} (Fogo) diminuiu o ataque de ${currentAttackerCard.name} em ${reductionAmount}! Novo ATK de ${currentAttackerCard.name}: ${currentAttackerCard.attackMin}-${currentAttackerCard.attackMax}.`);
-        console.log(`%c[DEBUG VEGETA] Ataque de ${currentAttackerCard.name} reduzido para: %c${currentAttackerCard.attackMin}-${currentAttackerCard.attackMax}`, 'color: #FF4500;', 'color: yellow;');
+        game.addLog(`${self.name} (Fogo) contra-atacou ${attacker.name} causando ${damageToAttacker} de dano!`);
+        console.log(`%c[DEBUG VEGETA] Dano de contra-ataque de Vegeta: ${damageToAttacker} para ${attacker.name}.`, 'color: #FF4500;');
         
-        game.updateUI(); // Atualiza a UI para refletir o novo ataque do inimigo
+        // Aplica o dano ao atacante
+        await game.dealDamage(attacker, damageToAttacker, self); 
+        
+        game.updateUI(); // Atualiza a UI para refletir o dano causado pelo contra-ataque
         return true;
     }
     return false;
@@ -420,7 +417,7 @@ new Card('water7', 'Ban', 'Tank', [2, 4], 50, 'Agua', 'Agua: Ele sofre dano no l
             }
         }
     }),
-    new Card('earth4', 'Might Guy', 'Damage', [16, 18], 22, 'Terra', 'Terra: Might Guy ignora 10 de Escudo (se o inimigo tiver um efeito que absorve dano) ao atacar.', async (game, self, target) => {
+    new Card('earth4', 'Might Guy', 'Damage', [18, 20], 22, 'Terra', 'Terra: Might Guy ignora 10 de Escudo (se o inimigo tiver um efeito que absorve dano) ao atacar.', async (game, self, target) => {
         if (game.isProcessingAttack && self.id === game.selectedAttacker.id && target.effectsApplied['Escudo']) {
             game.addLog(`${self.name} (Terra) ignorou 10 de Escudo de ${target.name}.`);
             return 10; 
@@ -435,7 +432,7 @@ new Card('water7', 'Ban', 'Tank', [2, 4], 50, 'Agua', 'Agua: Ele sofre dano no l
         }
         
     }),
-    new Card('earth6', 'Luffy', 'Tank', [3, 5], 60, 'Terra', 'Terra: Sempre que receber dano, aumenta em 1-1 o pr\u00f3prio ataque.', async (game, self, target) => {
+    new Card('earth6', 'Luffy', 'Tank', [4, 6], 60, 'Terra', 'Terra: Sempre que receber dano, aumenta em 1-1 o pr\u00f3prio ataque.', async (game, self, target) => {
     // Este specialEffect ser\u00e1 chamado AP\u00d3S Luffy receber dano
     console.log(`%c[DEBUG LUFFY] Habilidade de Luffy verificada. Recebendo dano: %c${self.name}%c.`, 'color: brown;', 'color: yellow;', 'color: brown;'); // Brown para Terra
 
@@ -474,7 +471,7 @@ new Card('earth7', 'Gon', 'Damage', [5, 6], 10, 'Terra', 'Terra: Ao ser derrotad
         return false;
     }, 'img/earth7.png'), // Certifique-se de ter 'img/earth7.png'
 
-    new Card('earth8', 'Pain', 'Damage', [5, 7], 22, 'Terra', 'Terra: Ataca todos os inimigos com seu Shinra Tensei.', async (game, self, target) => {
+    new Card('earth8', 'Pain', 'Damage', [6, 8], 22, 'Terra', 'Terra: Ataca todos os inimigos com seu Shinra Tensei.', async (game, self, target) => {
         // Este specialEffect será chamado quando Pain for selecionado para atacar.
         // Ele vai aplicar dano a TODOS os inimigos.
         console.log(`%c[DEBUG PAIN] Habilidade de Pain (Shinra Tensei) ativada!`, 'color: #8B4513; font-weight: bold;'); // Marrom para Terra
@@ -607,7 +604,7 @@ new Card('earth7', 'Gon', 'Damage', [5, 6], 10, 'Terra', 'Terra: Ao ser derrotad
     }
     return false;
 }, 'img/wind6.png'),
-new Card('wind7', 'Meimei', 'Healer', [12, 14], 22, 'Ar', 'Ar: Sempre que Meimei cura um aliado, ela causa 4 de dano a todos os inimigos com uma rajada de corvos.', async (game, self, target) => {
+new Card('wind7', 'Meimei', 'Healer', [10, 14], 22, 'Ar', 'Ar: Sempre que Meimei cura um aliado, ela causa 4 de dano a todos os inimigos com uma rajada de corvos.', async (game, self, target) => {
         // Este specialEffect será chamado APÓS Meimei realizar uma cura (em game.performHeal)
         console.log(`%c[DEBUG MEIMEI] Habilidade de Meimei (Rajada de Corvos) verificada. Curando: %c${target.name}%c.`, 'color: #20B2AA;', 'color: yellow;', 'color: #20B2AA;'); // Azul-esverdeado para Ar
 
@@ -684,7 +681,7 @@ new Card('wind7', 'Meimei', 'Healer', [12, 14], 22, 'Ar', 'Ar: Sempre que Meimei
     }
     return false;
 }),
-    new Card('dark2', 'Zeref', 'Tank', [2, 4], 45, 'Dark', 'Dark: Tem 25% de chance de "Amaldiçoar" o inimigo que o atacar. Cartas amaldiçoadas recebem 2 de dano no início de cada turno delas por 2 turnos.', async (game, self, target) => {
+    new Card('dark2', 'Zeref', 'Tank', [2, 4], 50, 'Dark', 'Dark: Tem 25% de chance de "Amaldiçoar" o inimigo que o atacar. Cartas amaldiçoadas recebem 2 de dano no início de cada turno delas por 2 turnos.', async (game, self, target) => {
         if (game.isProcessingAttack && self.id === target.id && Math.random() < 0.25) {
             const attacker = game.selectedAttacker;
             if (attacker) {
@@ -694,7 +691,7 @@ new Card('wind7', 'Meimei', 'Healer', [12, 14], 22, 'Ar', 'Ar: Sempre que Meimei
             }
         }
     }),
-    new Card('dark3', 'Madara', 'Damage', [16, 20], 21, 'Dark', 'Dark: Sempre que Madara derrota uma criatura inimiga, ele se cura em 5 HP e aumenta seu ataque mínimo e máximo em 2 permanentemente.', async (game, self, target) => {
+    new Card('dark3', 'Madara', 'Damage', [15, 27], 21, 'Dark', 'Dark: Sempre que Madara derrota uma criatura inimiga, ele se cura em 5 HP e aumenta seu ataque mínimo e máximo em 2 permanentemente.', async (game, self, target) => {
         if (game.isCardDefeated && self.id === game.selectedAttacker.id && target.currentLife <= 0) {
             game.healCard(self, 5); 
             self.attackMin += 2; 
@@ -703,7 +700,7 @@ new Card('wind7', 'Meimei', 'Healer', [12, 14], 22, 'Ar', 'Ar: Sempre que Meimei
             game.updateUI();
         }
     }),
-    new Card('dark4', 'Itachi', 'Damage', [8, 10], 22, 'Dark', 'Dark: Pode atacar diretamente qualquer criatura inimiga, ignorando a regra de Tanks.', null),
+    new Card('dark4', 'Itachi', 'Damage', [6, 12], 22, 'Dark', 'Dark: Pode atacar diretamente qualquer criatura inimiga, ignorando a regra de Tanks.', null),
     new Card('dark5', 'Sung Jin-woo', 'Feiticeiro', [5, 7], 33, 'Dark', 'Dark: Ao iniciar a batalha, concede seu ataque (5-7) ao Tank aliado mais ferido. Habilidade passiva: Ao ter um aliado derrotado, invoca a sombra Igris (ATK 10-13, VIDA 25) no lugar dele (uma vez por partida).', async (game, self, target) => {
     // ESTE specialEffect agora será APENAS para o Buff de Ataque no Tank (ativação: início da batalha)
     console.log(`%c[DEBUG SUNG JIN-WOO - EFFECT] Habilidade de Feiticeiro (BUFF TANK) verificada. Dono: %c${self.owner}%c, Vida: %c${self.currentLife}`, 'color: purple;', 'color: yellow;', 'color: purple;', 'color: yellow;');
@@ -831,7 +828,7 @@ new Card('dark8', 'Megumi', 'Feiticeiro', [5, 7], 30, 'Dark', 'Dark: Passivo: No
     return false; // Ninguém para drenar ou não é o momento do dreno
 }, 'img/dark8.png'),
 
-new Card('light1', 'Hashirama', 'Tank', [2, 4], 50, 'Luz', 'Luz: Quando Hashirama recebe dano, ele tem 50% de chance de reduzir esse dano em 5. No in\u00edcio do turno do jogador, se a vida dele for menor que a m\u00e1xima, ele se cura em 3 HP.', async (game, self, targetOrAttacker) => {
+new Card('light1', 'Hashirama', 'Tank', [3, 5], 50, 'Luz', 'Luz: Quando Hashirama recebe dano, ele tem 50% de chance de reduzir esse dano em 5. No início do turno do jogador, se a vida dele for menor que a máxima, ele se cura em 3 HP.', async (game, self, targetOrAttacker) => {
     // --- Lógica de Redução de Dano (quando Hashirama é atacado) ---
     // 'targetOrAttacker' aqui será o próprio Hashirama quando a habilidade de redução for verificada em dealDamage.
     // 'game.isProcessingAttack' e 'self.id === targetOrAttacker.id' garantem que a redução se aplica ao ser atingido.
@@ -855,7 +852,7 @@ new Card('light1', 'Hashirama', 'Tank', [2, 4], 50, 'Luz', 'Luz: Quando Hashiram
     
     return 0; // Retorna 0 se nenhuma das habilidades se aplicou
 }),
-new Card('light2', 'Naruto', 'Tank', [4, 5], 52, 'Luz', 'Luz: No início do turno do jogador, Naruto concede 7 de Escudo (absorve os próximos 7 de dano) a todos os aliados na fileira de trás.', async (game, self, target) => {
+new Card('light2', 'Naruto', 'Tank', [4, 5], 52, 'Luz', 'Luz: No início do turno do jogador, Naruto concede 10 de Escudo (absorve os próximos 10 de dano) a todos os aliados na fileira de trás.', async (game, self, target) => {
     console.log(`[CHECKPOINT 5] Dentro do specialEffect do Naruto. Dono: ${self.owner}, Vida: ${self.currentLife}, ID: ${self.id}`);
 
     // >>> ESTA É A LINHA QUE DEVE ESTAR CORRETA <<<
@@ -874,8 +871,8 @@ new Card('light2', 'Naruto', 'Tank', [4, 5], 52, 'Luz', 'Luz: No início do turn
         }
 
         for (const ally of backRowAllies) {
-            game.applyEffect(ally, 'Escudo', -1, 7); 
-            game.addLog(`${self.name} (Luz) concedeu 7 de Escudo a ${ally.name}.`);
+            game.applyEffect(ally, 'Escudo', -1, 10); 
+            game.addLog(`${self.name} (Luz) concedeu 10 de Escudo a ${ally.name}.`);
             console.log(`[CHECKPOINT 9] Escudo aplicado a: ${ally.name}`);
         }
         game.updateUI();
@@ -883,14 +880,14 @@ new Card('light2', 'Naruto', 'Tank', [4, 5], 52, 'Luz', 'Luz: No início do turn
         console.log(`%c[CHECKPOINT 10] Condições de ativação do Naruto são FALSAS. Detalhes: Fase=%c${game.currentPhase}%c, VidaNaruto=%c${self.currentLife}`, 'color: red;', 'color: yellow;', 'color: red;', 'color: yellow;', 'color: red;', 'color: yellow;'); // Mensagem detalhada e colorida
     }
 }),
-    new Card('light3', 'Gojo', 'Damage', [14, 18], 22, 'Luz', 'Luz: Tem 30% de dar o dano dobrado, sem aplicar o multiplicador ofensivo de dano de elemento para ele.', async (game, self, target) => {
-        if (game.isProcessingAttack && self.id === game.selectedAttacker.id && Math.random() < 0.30) {
+    new Card('light3', 'Gojo', 'Damage', [18, 22], 22, 'Luz', 'Luz: Tem 35% de dar o dano dobrado, sem aplicar o multiplicador ofensivo de dano de elemento para ele.', async (game, self, target) => {
+        if (game.isProcessingAttack && self.id === game.selectedAttacker.id && Math.random() < 0.35) {
             game.addLog(`${self.name} (Luz) DOBROU seu dano!`);
             return 2; 
         }
         return 1; 
     }),
-    new Card('light4', 'Kakashi', 'Damage', [18, 20], 23, 'Luz', 'Luz: O ataque de Kakashi ignora todos os efeitos de "Escudo" e "Esquiva" do alvo.', null),
+    new Card('light4', 'Kakashi', 'Damage', [20, 23], 23, 'Luz', 'Luz: O ataque de Kakashi ignora todos os efeitos de "Escudo" e "Esquiva" do alvo.', null),
     new Card('light5', 'Julius Novachrono', 'Healer', [12, 15], 30, 'Luz', 'Luz: Uma vez por partida, Julius Novachrono pode escolher um aliado para remover todos os efeitos negativos (ex: Amaldiçoar, Queimar, Enraizar, Atordoar) dele e curá-lo em 10 HP.', async (game, self, target) => {
         if (game.currentPhase === 'battle' && game.currentPlayerId === self.owner && !self.hasUsedSpecialAbilityOnce) {
             if (target) {
@@ -992,7 +989,7 @@ new Card('light2', 'Naruto', 'Tank', [4, 5], 52, 'Luz', 'Luz: No início do turn
     return false; // Retorna false se a habilidade de início de batalha não foi ativada.
                   // Ou se esta chamada não é para a habilidade de início de batalha.
 }),
-new Card('light7', 'Goku', 'Damage', [5, 7], 22, 'Luz', 'Luz: Ataca todos os inimigos com seu Kamehameha.', async (game, self, target) => {
+new Card('light7', 'Goku', 'Damage', [6, 8], 22, 'Luz', 'Luz: Ataca todos os inimigos com seu Kamehameha.', async (game, self, target) => {
     // Este specialEffect será chamado APÓS a fase de cálculo de dano inicial em performAttack
     // Ele vai aplicar dano a TODOS os inimigos.
     console.log(`%c[DEBUG GOKU] Habilidade de Goku (Kamehameha) ativada!`, 'color: orange;', 'font-weight: bold;');
@@ -1060,8 +1057,8 @@ export const igrisCardData = {
     name: 'Igris (Sombra)',
     image: 'img/igris.png',
     type: 'Damage', // Ou o tipo que você preferir para ele
-    attackRange: [10, 13],
-    maxLife: 25,
+    attackRange: [18, 23],
+    maxLife: 28,
     element: 'Dark',
     effectDescription: 'Dark: Uma sombra leal invocada por Sung Jin-woo.',
     specialEffect: null // Igris não tem um efeito especial próprio complexo
