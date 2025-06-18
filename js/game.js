@@ -1012,21 +1012,18 @@ performAttack: async function(attacker, target, isSecondHit = false) {
 dealDamage: async function(targetCard, amount, attacker = null) {
     let damageToApply = amount;
     let finalDamageReceived = 0;
-    let handledByTransformationOrSummon = false; // Esta flag controla se a carta foi "resolvida" (regenerada, transformada, invocada)
-                                                // e não precisa mais da lógica padrão de "derrotado" no slot DOM.
+    let handledByTransformationOrSummon = false;
 
     console.log(`%c[DEBUG DEALDAMAGE START] --- Processando Dano ---`, 'background-color: #333; color: white; padding: 2px 5px;');
-    console.log(`%c[DEBUG DEALDAMAGE START] Alvo: ${targetCard.name} (HP: <span class="math-inline">\{targetCard\.currentLife\}/</span>{targetCard.maxLife}), Dano Inicial: ${damageToApply}, Atacante: ${attacker ? attacker.name : 'N/A'}.`, 'color: #ADD8E6;');
+    console.log(`%c[DEBUG DEALDAMAGE START] Alvo: ${targetCard.name} (HP: ${targetCard.currentLife}/${targetCard.maxLife}), Dano Inicial: ${damageToApply}, Atacante: ${attacker ? attacker.name : 'N/A'}.`, 'color: #ADD8E6;');
 
     // 0. LÓGICA DE REDIRECIONAMENTO DE DANO PARA BAN (water7)
     const banCard = this.players[targetCard.owner].team.find(c => c.id === 'water7' && c.currentLife > 0);
     if (targetCard.id !== 'water7' && targetCard.owner === banCard?.owner && banCard && !banCard.hasUsedSpecialAbilityOnce) {
         this.addLog(`${banCard.name} (Agua) se interpõe e sofre o dano no lugar de ${targetCard.name}!`);
         await this.dealDamage(banCard, damageToApply, attacker);
-        // NÃO chame reRenderCard(targetCard) aqui. O target original não é modificado.
-        // A UI para o target original será atualizada no updateUI final.
         console.log(`%c[DEBUG DEALDAMAGE END] Dano redirecionado por Ban. Finalizando esta execução de dealDamage.`, 'color: #ADD8E6;');
-        return; // Termina esta execução para o target original, o dano foi redirecionado
+        return;
     }
 
     // 1. ANIMAÇÃO DE DANO RECEBIDO
@@ -1050,16 +1047,40 @@ dealDamage: async function(targetCard, amount, attacker = null) {
             return;
         }
     }
-    // 2.2. EsquivaChance (Akali - wind5): Ignorado por Kakashi. Se não é Kakashi, chance de esquivar.
-    // Kilua Godspeed (kilua_godspeed) também tem essa passiva
-    if (targetCard.currentLife > 0 && (targetCard.effectsApplied['EsquivaChance'] || targetCard.id === 'kilua_godspeed') && (attacker === null || attacker.id !== 'light4')) {
-        let dodgeChance = 0;
-        if (targetCard.effectsApplied['EsquivaChance']) {
-            dodgeChance = targetCard.effectsApplied['EsquivaChance'].value;
-        } 
 
-        // Note: O specialEffect do Kilua Godspeed está mais focado em retornar se ele ESQUIVOU ou não
-        // A lógica de Math.random() < 0.5 já está dentro do specialEffect dele.
+    // 2.2. EsquivaChance (Akali - wind5): Ignorado por Kakashi. Se não é Kakashi, chance de esquivar.
+    // Kilua Godspeed (kilua_godspeed) também tem essa passiva.
+    // AGORA, Akali (wind5) também tem sua PRÓPRIA passiva de esquiva aqui.
+    if (targetCard.currentLife > 0 && (attacker === null || attacker.id !== 'light4')) { // Se não é Kakashi
+        // Lógica de esquiva da Akali (nova passiva de 30%)
+        if (targetCard.id === 'wind5' && targetCard.specialEffect) { // Se a carta é Akali
+            // O specialEffect da Akali agora lida com a própria chance de esquiva dela
+            const akaliDodged = await targetCard.specialEffect(this, targetCard, targetCard); 
+            if (akaliDodged) {
+                this.addLog(`${targetCard.name} (Ar) esquivou do ataque com sua agilidade passiva!`);
+                damageToApply = 0;
+                this.reRenderCard(targetCard);
+                this.updateUI();
+                console.log(`%c[DEBUG DEALDAMAGE END] Akali (passiva) esquivou, dano zerado.`, 'color: #ADD8E6;');
+                return;
+            }
+        }
+
+        // Lógica de esquiva concedida por Akali (efeito 'EsquivaChance')
+        if (targetCard.effectsApplied['EsquivaChance'] && targetCard.effectsApplied['EsquivaChance'].value > 0) {
+            const dodgeChance = targetCard.effectsApplied['EsquivaChance'].value;
+            if (Math.random() < dodgeChance) {
+                this.addLog(`${targetCard.name} esquivou do ataque devido ao efeito de Akali!`);
+                damageToApply = 0;
+                delete targetCard.effectsApplied['EsquivaChance']; // Consome o efeito de Akali
+                this.reRenderCard(targetCard);
+                this.updateUI();
+                console.log(`%c[DEBUG DEALDAMAGE END] Akali (buff) esquivou, dano zerado.`, 'color: #ADD8E6;');
+                return;
+            }
+        }
+        
+        // Lógica de esquiva do Kilua Godspeed (50%)
         if (targetCard.id === 'kilua_godspeed' && targetCard.specialEffect) {
             const kiluaDodged = await targetCard.specialEffect(this, targetCard, targetCard);
             if (kiluaDodged) {
@@ -1070,14 +1091,6 @@ dealDamage: async function(targetCard, amount, attacker = null) {
                 console.log(`%c[DEBUG DEALDAMAGE END] Kilua Godspeed esquivou, dano zerado.`, 'color: #ADD8E6;');
                 return;
             }
-        } else if (dodgeChance > 0 && Math.random() < dodgeChance) { // Para efeitos de EsquivaChance de Akali
-            this.addLog(`${targetCard.name} esquivou do ataque devido ao efeito de Akali!`);
-            damageToApply = 0;
-            delete targetCard.effectsApplied['EsquivaChance']; // Consome o efeito de Akali
-            this.reRenderCard(targetCard);
-            this.updateUI();
-            console.log(`%c[DEBUG DEALDAMAGE END] Akali esquivou, dano zerado.`, 'color: #ADD8E6;');
-            return;
         }
     }
 
@@ -1097,7 +1110,6 @@ dealDamage: async function(targetCard, amount, attacker = null) {
             this.addLog(`${targetCard.name} (Luz) reduziu ${Math.abs(hashiramaReduction)} de dano recebido!`);
         }
     }
-
     // 3. LÓGICA DO ESCUDO
     // Ignorado por Kakashi (light4)
     if (damageToApply > 0 && targetCard.effectsApplied['Escudo'] && targetCard.effectsApplied['Escudo'].value > 0 && (attacker === null || attacker.id !== 'light4')) {

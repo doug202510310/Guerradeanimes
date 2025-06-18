@@ -574,13 +574,25 @@ new Card('earth7', 'Gon', 'Damage', [5, 6], 10, 'Terra', 'Terra: Ao ser derrotad
         }
         return false;
     }),
-    new Card('wind5', 'Akali', 'Healer', [10, 12], 31, 'Ar', 'Ar: Quando Akali cura um aliado, esse aliado ganha 70% de chance de esquiva em seu próximo turno.', async (game, self, target) => {
-        if (game.isProcessingHeal && self.id === game.selectedAttacker.id && target) {
-            game.applyEffect(target, 'EsquivaChance', 1, 0.70); 
-            game.addLog(`${self.name} (Ar) concedeu 70% de chance de esquiva a ${target.name}.`);
-            game.updateUI();
-        }
-    }),
+   new Card('wind5', 'Akali', 'Healer', [10, 12], 31, 'Ar', 'Ar: Possui 30% de chance de esquivar de qualquer ataque recebido. Quando Akali cura um aliado, esse aliado ganha 70% de chance de esquiva em seu pr\u00f3ximo turno.', async (game, self, target) => {
+    // L\u00f3gica para Akali esquivar (como passiva ao receber dano)
+    // 'self' \u00e9 a pr\u00f3pria Akali quando ela est\u00e1 recebendo dano.
+    // 'game.isProcessingAttack' e 'self.id === target.id' s\u00e3o a forma como dealDamage identifica quem est\u00e1 sendo atingido.
+    if (game.isProcessingAttack && self.id === target.id && Math.random() < 0.30) { // 30% de chance de esquiva para Akali
+        game.addLog(`${self.name} (Ar) esquivou do ataque!`);
+        return true; // Indica que Akali esquivou (dano ser\u00e1 zerado em dealDamage)
+    }
+
+    // L\u00f3gica para Akali curar um aliado (j\u00e1 existente)
+    // 'game.isProcessingHeal' e 'self.id === game.selectedAttacker.id' indicam que Akali est\u00e1 curando.
+    if (game.isProcessingHeal && game.selectedAttacker && self.id === game.selectedAttacker.id && target) {
+        game.applyEffect(target, 'EsquivaChance', 1, 0.70); // Concede 70% de chance de esquiva por 1 turno
+        game.addLog(`${self.name} (Ar) concedeu 70% de chance de esquiva a ${target.name}.`);
+        game.updateUI();
+        // Não retorna true aqui, pois a esquiva passiva dela não depende desta parte da habilidade.
+    }
+    return false; // Retorna false se nenhuma das habilidades foi ativada nesse contexto.
+}),
     new Card('wind6', 'Zoro', 'Damage', [13, 16], 24, 'Ar', 'Ar: A cada ataque de Zoro aumenta em 1-1 o pr\u00f3prio ataque.', async (game, self, target) => {
     // Este specialEffect será chamado após cada ataque de Zoro
     console.log(`%c[DEBUG ZORO] Habilidade de Zoro verificada. Atacante: %c${self.name}%c.`, 'color: #8B4513;', 'color: yellow;', 'color: #8B4513;'); // Brown
