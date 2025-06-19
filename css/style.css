@@ -131,6 +131,11 @@ body {
 
 /* Battlefield layout */
 /* Make the battlePhase content container a flex row */
+#battlePhase {
+    background-image: url('../img/battleimage.png');
+    background-size: cover;
+    
+}
 #battlePhaseContent {
     display: flex;
     flex-direction: row; /* Arrange fields side-by-side */
@@ -203,10 +208,23 @@ body {
     align-self: center; /* Center vertically within the flex container */
     flex-shrink: 0; /* Prevent it from shrinking */
     font-size: 4rem;
-    color: #4a5568; /* gray-700 */
+    color: #d71919; /* gray-700 */
     pointer-events: none; /* Allow clicks to pass through */
 }
+#vsText :hover {
+    color: #f6e05e; /* yellow-400 on hover */
+    text-shadow: 0 0 10px rgba(246, 224, 94, 0.5); /* Glow effect */
+}
 
+#battleTurnText{
+    position: absolute;
+    top: 5px;
+    left: 50%;
+    transform: translateX(-50%);
+    font-size: 2rem;
+    color: #f6e05e; /* yellow-400 */
+    text-shadow: 0 0 10px rgba(246, 224, 94, 0.5); /* Glow effect */
+}
 /* Shine effect */
 .shine {
     animation: shine-animation 0.8s ease-in-out forwards;
